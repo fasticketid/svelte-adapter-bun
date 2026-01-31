@@ -11,6 +11,12 @@ const port = parseInt(env('PORT', '3000'));
 const idle_timeout = timeout_env('IDLE_TIMEOUT', 0) || undefined;
 const shutdown_timeout = timeout_env('SHUTDOWN_TIMEOUT', 30);
 
+/** @param {string} event @param {...any} args */
+async function emit_and_await(event, ...args) {
+	const listeners = process.listeners(event);
+	await Promise.all(listeners.map((fn) => fn(...args)));
+}
+
 const server = Bun.serve({
 	fetch: httpserver,
 	hostname: socket_path ? undefined : host,
@@ -22,7 +28,7 @@ const server = Bun.serve({
 });
 
 // Graceful shutdown (issues #52, #69)
-function shutdown() {
+async function shutdown(reason) {
 	console.log('Shutting down gracefully...');
 	server.stop();
 
@@ -33,10 +39,27 @@ function shutdown() {
 
 	// Don't let the timer keep the process alive
 	timer.unref();
+
+	try {
+		await emit_and_await('sveltekit:shutdown', reason);
+	} catch (e) {
+		console.error('Error in sveltekit:shutdown listener:', e);
+	}
 }
 
-process.on('SIGINT', shutdown);
-process.on('SIGTERM', shutdown);
+process.on('SIGINT', () => shutdown('SIGINT'));
+process.on('SIGTERM', () => shutdown('SIGTERM'));
+
+try {
+	await emit_and_await('sveltekit:startup', {
+		server,
+		host: socket_path ? undefined : host,
+		port: socket_path ? undefined : server.port,
+		socket_path: socket_path || undefined
+	});
+} catch (e) {
+	console.error('Error in sveltekit:startup listener:', e);
+}
 
 if (socket_path) {
 	console.log(`Listening on ${socket_path}`);
