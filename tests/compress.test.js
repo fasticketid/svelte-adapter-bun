@@ -118,6 +118,10 @@ test('compressed output is smaller than original for repetitive content', async 
 	expect(br_size).toBeLessThan(original_size);
 });
 
+test('no crash when directory does not exist', async () => {
+	await expect(compress('/tmp/nonexistent-dir-' + Date.now())).resolves.toBeUndefined();
+});
+
 test('decompressed gzip matches original', async () => {
 	const content = 'Hello, this is a test of compression!';
 	await writeFile('test.txt', content);

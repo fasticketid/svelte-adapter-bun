@@ -134,7 +134,7 @@ export const manifest = ${builder.generateManifest({ relativePath: './' })};
 
 export const prerendered = new Set(${JSON.stringify([...prerendered_entries])});
 
-export const base_path = ${JSON.stringify(builder.config.paths.base)};
+export const base_path = ${JSON.stringify(builder.config.kit.paths.base)};
 `;
 
 			await Bun.write(join(tmp, 'manifest.js'), manifest_content);

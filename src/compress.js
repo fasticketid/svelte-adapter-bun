@@ -1,3 +1,4 @@
+import { statSync } from 'node:fs';
 import { brotliCompressSync, constants } from 'node:zlib';
 
 /** @typedef {import('./types.js').CompressOptions} CompressOptions */
@@ -31,6 +32,10 @@ export async function compress(directory, options = {}) {
 	const do_brotli = options.brotli !== false;
 
 	if (!do_gzip && !do_brotli) return;
+
+	// Skip if directory doesn't exist (e.g. no prerendered pages)
+	const stat = statSync(directory, { throwIfNoEntry: false });
+	if (!stat?.isDirectory()) return;
 
 	const pattern = `**/*.{${extensions.join(',')}}`;
 	const glob = new Bun.Glob(pattern);

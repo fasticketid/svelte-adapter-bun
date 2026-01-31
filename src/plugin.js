@@ -11,9 +11,11 @@ async function emit_and_await(event, ...args) {
  * Vite plugin that emits sveltekit:startup and sveltekit:shutdown events in dev mode,
  * matching the production runtime behavior in src/files/index.js.
  *
+ * @param {{ websocket?: string | false }} [opts]
  * @returns {import('vite').Plugin}
  */
-export function lifecyclePlugin() {
+export function lifecyclePlugin(opts = {}) {
+	const websocketPath = opts.websocket || false;
 	return {
 		name: 'svelte-adapter-bun:lifecycle',
 		apply: 'serve',
@@ -27,12 +29,30 @@ export function lifecyclePlugin() {
 			/** @type {boolean} */
 			let shutting_down = false;
 
+			/** @type {{ close: () => void } | null} */
+			let wsServer = null;
+
 			// Post-middleware hook — runs after Vite sets up its own middleware
 			return () => {
 				const logger = server.config.logger;
 
 				// Announce
 				logger.info('lifecycle plugin active', { timestamp: true });
+
+				// WebSocket dev server
+				if (websocketPath && httpServer) {
+					import('./dev/websocket-server.js')
+						.then(({ setupDevWebSocket }) => {
+							wsServer = setupDevWebSocket(httpServer, websocketPath);
+							logger.info('websocket dev server active', {
+								timestamp: true
+							});
+						})
+						.catch((e) => {
+							logger.error('Failed to start WebSocket dev server:');
+							console.error(e);
+						});
+				}
 
 				// Bun runtime check
 				if (typeof Bun === 'undefined') {
@@ -71,6 +91,8 @@ export function lifecyclePlugin() {
 				httpServer.on('close', () => {
 					if (shutting_down) return;
 					shutting_down = true;
+
+					if (wsServer) wsServer.close();
 
 					emit_and_await('sveltekit:shutdown', 'close').catch((e) => {
 						console.error('Error in sveltekit:shutdown listener:', e);
