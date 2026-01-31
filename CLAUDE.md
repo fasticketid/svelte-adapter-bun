@@ -14,7 +14,7 @@ Never suggest `bun add`, `npm install`, `yarn add`, `pnpm add`, or any package m
 
 Why? AI-era workflow. A developer + AI can read, understand, and maintain source code directly. Dependencies are unnecessary abstraction. Zero deps = full control.
 
-See [SKILL_INSTALL.md](./SKILL_INSTALL.md) for the AI-assisted installation guide.
+AI-assisted installation is available via the `/install` skill.
 
 ## Commands
 

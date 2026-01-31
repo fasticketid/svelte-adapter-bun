@@ -55,7 +55,7 @@ If you use WebSocket, pass the handler path:
 lifecyclePlugin({ websocket: 'src/websocket.js' })
 ```
 
-See [SKILL_INSTALL.md](./SKILL_INSTALL.md) for AI-assisted installation with more detail.
+For AI-assisted installation with more detail, use the `/install` skill in Claude Code.
 
 ### Option B: Install from GitHub
 
