@@ -4,7 +4,7 @@ SvelteKit adapter that produces a standalone Bun server via `Bun.serve()`. Zero 
 
 **I'm not vibing, I am cooking.**
 
-This is copy-paste source code, not an npm package. You drop it into your project and own it. See [SKILL_INSTALL.md](./SKILL_INSTALL.md) for AI-assisted installation.
+This is copy-paste source code, not an npm package. You drop it into your project and own it. Or install directly from GitHub if you prefer.
 
 ## Requirements
 
@@ -12,6 +12,12 @@ This is copy-paste source code, not an npm package. You drop it into your projec
 - SvelteKit >= 2.0.0
 
 ## Installation
+
+Two ways to install. Pick one.
+
+### Option A: Copy-paste (recommended)
+
+Full control, no dependency, you own the code. Best for AI-assisted workflows.
 
 1. Copy the `src/` directory into your SvelteKit project (e.g. as `src/adapter-bun/`)
 2. Update `svelte.config.js`:
@@ -48,6 +54,47 @@ If you use WebSocket, pass the handler path:
 ```js
 lifecyclePlugin({ websocket: 'src/websocket.js' })
 ```
+
+See [SKILL_INSTALL.md](./SKILL_INSTALL.md) for AI-assisted installation with more detail.
+
+### Option B: Install from GitHub
+
+If you prefer a traditional dependency install:
+
+```bash
+bun add github:binsarjr/svelte-adapter-bun
+```
+
+Then in `svelte.config.js`:
+
+```js
+import adapter from 'svelte-adapter-bun';
+
+export default {
+  kit: {
+    adapter: adapter({
+      out: 'build',
+      precompress: true
+    })
+  }
+};
+```
+
+And in `vite.config.js`:
+
+```js
+import { sveltekit } from '@sveltejs/kit/vite';
+import { lifecyclePlugin } from 'svelte-adapter-bun/plugin';
+import { defineConfig } from 'vite';
+
+export default defineConfig({
+  plugins: [sveltekit(), lifecyclePlugin()]
+});
+```
+
+> **Note:** This pulls directly from the GitHub repo, not npm. Updates require `bun update svelte-adapter-bun` or re-installing. You won't be able to edit the adapter source directly — use Option A if you want that.
+
+### After installing (both options)
 
 4. Run dev with Bun native APIs:
 
