@@ -37,7 +37,7 @@ export function lifecyclePlugin() {
 				// Bun runtime check
 				if (typeof Bun === 'undefined') {
 					logger.warn(
-						'Bun runtime not detected. Some features may not work.\n' +
+						'Bun runtime not detected. Native Bun APIs will not work.\n' +
 							'  Run with: bunx --bun vite dev'
 					);
 				}
