@@ -1,106 +1,65 @@
+# CLAUDE.md
 
-Default to using Bun instead of Node.js.
+This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-- Use `bun <file>` instead of `node <file>` or `ts-node <file>`
-- Use `bun test` instead of `jest` or `vitest`
-- Use `bun build <file.html|file.ts|file.css>` instead of `webpack` or `esbuild`
-- Use `bun install` instead of `npm install` or `yarn install` or `pnpm install`
-- Use `bun run <script>` instead of `npm run <script>` or `yarn run <script>` or `pnpm run <script>`
-- Use `bunx <package> <command>` instead of `npx <package> <command>`
-- Bun automatically loads .env, so don't use dotenv.
+## What This Is
 
-## APIs
+SvelteKit adapter that produces a standalone Bun server via `Bun.serve()`. Zero runtime dependencies. Replaces `@sveltejs/adapter-node` for Bun deployments.
 
-- `Bun.serve()` supports WebSockets, HTTPS, and routes. Don't use `express`.
-- `bun:sqlite` for SQLite. Don't use `better-sqlite3`.
-- `Bun.redis` for Redis. Don't use `ioredis`.
-- `Bun.sql` for Postgres. Don't use `pg` or `postgres.js`.
-- `WebSocket` is built-in. Don't use `ws`.
-- Prefer `Bun.file` over `node:fs`'s readFile/writeFile
-- Bun.$`ls` instead of execa.
+## Philosophy: Copy-Paste, Not Install
+
+This is NOT an npm package. It will never be published to any registry. Period.
+
+Never suggest `bun add`, `npm install`, `yarn add`, `pnpm add`, or any package manager install command for this adapter. The only way to use it: copy-paste the source code into the target project.
+
+Why? AI-era workflow. A developer + AI can read, understand, and maintain source code directly. Dependencies are unnecessary abstraction. Zero deps = full control.
+
+See [SKILL_INSTALL.md](./SKILL_INSTALL.md) for the AI-assisted installation guide.
+
+## Commands
+
+```bash
+bun test                    # run all tests
+bun test tests/compress     # run a single test file
+bun test --watch            # watch mode
+bun run bench               # run benchmarks (benchmarks/ directory)
+bun run check               # type check (bunx tsc --noEmit)
+```
+
+## Architecture
+
+Build-time adapter (`src/index.js`) + runtime template files (`src/files/`). The adapter runs during `svelte-kit build`, bundles the app with `Bun.build()`, then copies the runtime files into the output directory with token replacement.
+
+**Build-time:**
+- `src/index.js` — Adapter entry. Implements SvelteKit's `Adapter` interface. Orchestrates: copy assets → compress → bundle with `Bun.build()` → copy runtime templates with token replacement.
+- `src/compress.js` — Gzip (`Bun.gzipSync`) + Brotli (`node:zlib`) precompression of static assets.
+- `src/types.js` — JSDoc typedefs for `AdapterOptions` and `CompressOptions`.
+- `src/ambient.d.ts` — Augments `App.Platform` with `req` and `server`.
+
+**Runtime (template files in `src/files/`):**
+- `src/files/index.js` — Server entry. Calls `Bun.serve()`, handles lifecycle hooks (`sveltekit:startup`, `sveltekit:shutdown`), graceful shutdown.
+- `src/files/handler.js` — Custom zero-dep static file server (replaces npm `sirv`). Handles ETag/304, content negotiation for precompressed files, range requests, MIME types, origin reconstruction, body size limits, WebSocket upgrade.
+- `src/files/env.js` — Environment variable lookup with optional prefix support.
+
+**Token replacement:** Files in `src/files/` use global tokens (`SERVER`, `MANIFEST`, `ENV`, `ENV_PREFIX`, `BUILD_OPTIONS`) that get replaced at build time by the adapter. These are NOT normal imports — they're template placeholders.
+
+**Key pattern:** `handler.js` contains `sirv()` — a complete inline static file server. Scans the directory at startup, builds an in-memory file map, serves from `Bun.file()`. Done intentionally to kill the npm `sirv` dependency.
+
+## Bun-First Rules
+
+- Use `bun` for everything: `bun test`, `bun run`, `bun install`, `bunx`.
+- Use Bun APIs: `Bun.serve()`, `Bun.file()`, `Bun.write()`, `Bun.build()`, `Bun.gzipSync()`, `Bun.gunzipSync()`, `Bun.Glob`, `Bun.env`.
+- Bun auto-loads `.env`. Don't use dotenv.
+- Don't use express, sirv (npm), ws, better-sqlite3, or any Node.js ecosystem package when Bun has a built-in equivalent.
 
 ## Testing
 
-Use `bun test` to run tests.
+Tests use `bun:test`. Pattern: create temp directories in `beforeEach`, clean up in `afterEach`. Tests for `handler.js` re-implement the static server logic locally because the runtime version uses template token globals that don't exist outside a real build.
 
-```ts#index.test.ts
-import { test, expect } from "bun:test";
+## Don'ts
 
-test("hello world", () => {
-  expect(1).toBe(1);
-});
-```
-
-## Frontend
-
-Use HTML imports with `Bun.serve()`. Don't use `vite`. HTML imports fully support React, CSS, Tailwind.
-
-Server:
-
-```ts#index.ts
-import index from "./index.html"
-
-Bun.serve({
-  routes: {
-    "/": index,
-    "/api/users/:id": {
-      GET: (req) => {
-        return new Response(JSON.stringify({ id: req.params.id }));
-      },
-    },
-  },
-  // optional websocket support
-  websocket: {
-    open: (ws) => {
-      ws.send("Hello, world!");
-    },
-    message: (ws, message) => {
-      ws.send(message);
-    },
-    close: (ws) => {
-      // handle close
-    }
-  },
-  development: {
-    hmr: true,
-    console: true,
-  }
-})
-```
-
-HTML files can import .tsx, .jsx or .js files directly and Bun's bundler will transpile & bundle automatically. `<link>` tags can point to stylesheets and Bun's CSS bundler will bundle.
-
-```html#index.html
-<html>
-  <body>
-    <h1>Hello, world!</h1>
-    <script type="module" src="./frontend.tsx"></script>
-  </body>
-</html>
-```
-
-With the following `frontend.tsx`:
-
-```tsx#frontend.tsx
-import React from "react";
-import { createRoot } from "react-dom/client";
-
-// import .css files directly and it works
-import './index.css';
-
-const root = createRoot(document.body);
-
-export default function Frontend() {
-  return <h1>Hello, world!</h1>;
-}
-
-root.render(<Frontend />);
-```
-
-Then, run index.ts
-
-```sh
-bun --hot ./index.ts
-```
-
-For more information, read the Bun API docs in `node_modules/bun-types/docs/**.mdx`.
+- Never suggest installing this adapter via a package manager. Copy-paste only.
+- Never add runtime dependencies. Zero means zero.
+- Never use Node.js APIs when Bun equivalents exist. One exception: `node:zlib` for brotli — Bun doesn't have native brotli compression yet.
+- Never publish this to npm or any registry.
+- `src/files/` is excluded from TypeScript checking (`tsconfig.json`) because those files use template token globals. Don't try to "fix" that.
