@@ -1,3 +1,8 @@
+---
+name: install
+description: Install svelte-adapter-bun into a SvelteKit project by copy-pasting source code
+---
+
 # AI Installation Guide: svelte-adapter-bun
 
 This guide helps AI assistants install the svelte-adapter-bun adapter into a SvelteKit project.
@@ -17,9 +22,10 @@ Copy the entire `src/` directory from this repository into the target project. T
 target-project/
 ├── src/
 │   ├── adapter-bun/       ← Copy src/ contents here
-│   │   ├── index.ts
-│   │   ├── types.ts
-│   │   ├── compress.ts
+│   │   ├── index.js
+│   │   ├── types.js
+│   │   ├── compress.js
+│   │   ├── plugin.js
 │   │   ├── ambient.d.ts
 │   │   └── files/
 │   │       ├── index.js
@@ -34,7 +40,7 @@ target-project/
 Update the SvelteKit config to use the adapter:
 
 ```js
-import adapter from './src/adapter-bun/index.ts';
+import adapter from './src/adapter-bun/index.js';
 
 /** @type {import('@sveltejs/kit').Config} */
 export default {
@@ -51,7 +57,25 @@ export default {
 };
 ```
 
-## Step 3: Ask the User
+## Step 3: Configure vite.config.js
+
+Add the lifecycle plugin for dev mode startup/shutdown events:
+
+```js
+import { sveltekit } from '@sveltejs/kit/vite';
+import { lifecyclePlugin } from './src/adapter-bun/plugin.js';
+import { defineConfig } from 'vite';
+
+export default defineConfig({
+  plugins: [sveltekit(), lifecyclePlugin()]
+});
+```
+
+The lifecycle plugin emits `sveltekit:startup` and `sveltekit:shutdown` process events in dev mode, matching the production runtime behavior.
+
+Note: Run dev mode with `bunx --bun vite dev` to ensure Bun APIs are available.
+
+## Step 4: Ask the User
 
 Before finalizing configuration, ask about:
 
@@ -61,7 +85,7 @@ Before finalizing configuration, ask about:
 4. **WebSocket**: Do they need WebSocket support? If yes, ask for the handler file path.
 5. **Proxy setup**: Are they behind a reverse proxy? If yes, they should set `PROTOCOL_HEADER`, `HOST_HEADER`, and `PORT_HEADER` environment variables.
 
-## Step 4: Add Type Reference
+## Step 5: Add Type Reference
 
 If the project uses TypeScript, add the ambient types reference. In the project's `src/app.d.ts`:
 
@@ -84,7 +108,7 @@ declare global {
 export {};
 ```
 
-## Step 5: Verify
+## Step 6: Verify
 
 Run these commands to verify the installation:
 
@@ -105,27 +129,36 @@ Then visit `http://localhost:3000` to confirm the app works.
 
 If the user needs WebSocket support:
 
-1. Create a WebSocket handler file (e.g. `src/websocket.ts`):
+1. Create a WebSocket handler file (e.g. `src/websocket.js`):
 
-```ts
-import type { ServerWebSocket, Server } from 'bun';
-
-export function upgrade(request: Request, server: Server): Response | undefined {
+```js
+/**
+ * @param {Request} request
+ * @param {import('bun').Server} server
+ * @returns {Response | undefined}
+ */
+export function upgrade(request, server) {
   const success = server.upgrade(request);
   if (success) return undefined;
   return new Response('Upgrade failed', { status: 500 });
 }
 
-export function open(ws: ServerWebSocket) {
+/** @param {import('bun').ServerWebSocket} ws */
+export function open(ws) {
   // Handle new connection
 }
 
-export function message(ws: ServerWebSocket, message: string | Buffer) {
+/**
+ * @param {import('bun').ServerWebSocket} ws
+ * @param {string | Buffer} message
+ */
+export function message(ws, message) {
   // Handle incoming message
   ws.send(message);
 }
 
-export function close(ws: ServerWebSocket) {
+/** @param {import('bun').ServerWebSocket} ws */
+export function close(ws) {
   // Handle disconnection
 }
 ```
@@ -134,7 +167,7 @@ export function close(ws: ServerWebSocket) {
 
 ```js
 adapter({
-  websocket: 'src/websocket.ts'
+  websocket: 'src/websocket.js'
 })
 ```
 
@@ -147,3 +180,4 @@ adapter({
 | WebSocket not connecting | Verify the websocket handler file path is correct and exports `upgrade` |
 | Port already in use | Set `PORT` env var to a different port |
 | Static files not found | Check that `out` matches where you're running the server from |
+| Bun APIs not available in dev | Run with `bunx --bun vite dev` instead of `vite dev` |

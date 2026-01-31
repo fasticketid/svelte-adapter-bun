@@ -60,6 +60,19 @@ export function lifecyclePlugin(options = {}) {
 
 			// Post-middleware hook — runs after Vite sets up its own middleware
 			return () => {
+				const logger = server.config.logger;
+
+				// Announce
+				logger.info('lifecycle plugin active', { timestamp: true });
+
+				// Bun runtime check
+				if (typeof Bun === 'undefined') {
+					logger.warn(
+						'Bun runtime not detected. Some features may not work.\n' +
+							'  Run with: bunx --bun vite dev'
+					);
+				}
+
 				const emitStartup = async () => {
 					const addr = httpServer.address();
 					const host =

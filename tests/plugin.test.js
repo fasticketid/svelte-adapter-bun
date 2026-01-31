@@ -1,4 +1,4 @@
-import { test, expect, describe, beforeEach, afterEach } from 'bun:test';
+import { test, expect, describe, beforeEach, afterEach, mock } from 'bun:test';
 import { EventEmitter } from 'node:events';
 import { lifecyclePlugin } from '../src/plugin.js';
 
@@ -20,7 +20,15 @@ function createMockHttpServer() {
  * @param {any} httpServer
  */
 function createMockViteServer(httpServer) {
-	return /** @type {any} */ ({ httpServer });
+	return /** @type {any} */ ({
+		httpServer,
+		config: {
+			logger: {
+				info: mock(() => {}),
+				warn: mock(() => {})
+			}
+		}
+	});
 }
 
 describe('lifecyclePlugin', () => {
@@ -238,6 +246,35 @@ describe('lifecyclePlugin', () => {
 		test('accepts custom shutdownTimeout', () => {
 			const custom = lifecyclePlugin({ shutdownTimeout: 5 });
 			expect(custom.name).toBe('svelte-adapter-bun:lifecycle');
+		});
+	});
+
+	describe('announce', () => {
+		test('logs plugin active via Vite logger', () => {
+			const viteServer = createMockViteServer(httpServer);
+
+			const postHook = /** @type {Function} */ (
+				/** @type {any} */ (plugin).configureServer(viteServer)
+			);
+			postHook();
+
+			expect(viteServer.config.logger.info).toHaveBeenCalledWith(
+				'lifecycle plugin active',
+				{ timestamp: true }
+			);
+		});
+	});
+
+	describe('bun detection', () => {
+		test('does not warn when running under Bun', () => {
+			const viteServer = createMockViteServer(httpServer);
+
+			const postHook = /** @type {Function} */ (
+				/** @type {any} */ (plugin).configureServer(viteServer)
+			);
+			postHook();
+
+			expect(viteServer.config.logger.warn).not.toHaveBeenCalled();
 		});
 	});
 });
