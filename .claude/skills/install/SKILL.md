@@ -27,6 +27,9 @@ target-project/
 │   │   ├── compress.js
 │   │   ├── plugin.js
 │   │   ├── ambient.d.ts
+│   │   ├── dev/
+│   │   │   ├── websocket-server.js
+│   │   │   └── websocket-shim.js
 │   │   └── files/
 │   │       ├── index.js
 │   │       ├── handler.js

@@ -1,7 +1,8 @@
-export { lifecyclePlugin } from './plugin.js';
 import { readFileSync, existsSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { compress } from './compress.js';
+
+export { lifecyclePlugin } from './plugin.js';
 
 /** @typedef {import('@sveltejs/kit').Adapter} Adapter */
 /** @typedef {import('./types.js').AdapterOptions} AdapterOptions */

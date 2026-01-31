@@ -4,7 +4,7 @@ import { Server } from 'SERVER';
 import { manifest, prerendered, base_path } from 'MANIFEST';
 import { env } from 'ENV';
 import { existsSync, readdirSync, statSync } from 'node:fs';
-import { join, extname, resolve } from 'node:path';
+import { join, extname } from 'node:path';
 
 const server = new Server(manifest);
 await server.init({ env: Bun.env });
@@ -48,8 +48,7 @@ const MIME_TYPES = {
 	'.yaml': 'text/yaml',
 	'.yml': 'text/yaml',
 	'.toml': 'text/toml',
-	'.webmanifest': 'application/manifest+json',
-	'.xml': 'application/xml'
+	'.webmanifest': 'application/manifest+json'
 };
 
 /**

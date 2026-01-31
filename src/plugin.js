@@ -4,7 +4,8 @@ const _process_once = process.once;
 
 /**
  * Emit a process event and await all listeners in parallel.
- * @param {string} event @param {...any} args
+ * @param {string} event
+ * @param {...any} args
  */
 async function emit_and_await(event, ...args) {
 	const listeners = process.listeners(event);

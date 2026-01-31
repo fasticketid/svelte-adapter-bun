@@ -62,7 +62,11 @@ For AI-assisted installation with more detail, use the `/install` skill in Claud
 If you prefer a traditional dependency install:
 
 ```bash
+# latest
 bun add github:binsarjr/svelte-adapter-bun
+
+# specific version
+bun add github:binsarjr/svelte-adapter-bun#v1.0.0
 ```
 
 Then in `svelte.config.js`:

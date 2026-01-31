@@ -35,11 +35,16 @@ Build-time adapter (`src/index.js`) + runtime template files (`src/files/`). The
 - `src/compress.js` — Gzip (`Bun.gzipSync`) + Brotli (`node:zlib`) precompression of static assets.
 - `src/types.js` — JSDoc typedefs for `AdapterOptions` and `CompressOptions`.
 - `src/ambient.d.ts` — Augments `App.Platform` with `req` and `server`.
+- `src/plugin.js` — Vite plugin. Emits `sveltekit:startup`/`sveltekit:shutdown` in dev and preview modes. Includes sticky event replay for late listeners and Bun runtime detection.
 
 **Runtime (template files in `src/files/`):**
 - `src/files/index.js` — Server entry. Calls `Bun.serve()`, handles lifecycle hooks (`sveltekit:startup`, `sveltekit:shutdown`), graceful shutdown.
 - `src/files/handler.js` — Custom zero-dep static file server (replaces npm `sirv`). Handles ETag/304, content negotiation for precompressed files, range requests, MIME types, origin reconstruction, body size limits, WebSocket upgrade.
 - `src/files/env.js` — Environment variable lookup with optional prefix support.
+
+**Dev support (`src/dev/`):**
+- `src/dev/websocket-server.js` — Sets up a `ws` WebSocket server on Vite's HTTP server for dev mode WebSocket support.
+- `src/dev/websocket-shim.js` — `BunWebSocketShim` that translates Node.js `ws` connections to Bun's `ServerWebSocket` API shape.
 
 **Token replacement:** Files in `src/files/` use global tokens (`SERVER`, `MANIFEST`, `ENV`, `ENV_PREFIX`, `BUILD_OPTIONS`) that get replaced at build time by the adapter. These are NOT normal imports — they're template placeholders.
 
