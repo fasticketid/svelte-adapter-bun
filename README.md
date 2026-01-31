@@ -2,6 +2,8 @@
 
 SvelteKit adapter for Bun. `Bun.serve()`, zero runtime dependencies, copy-paste into your project.
 
+**I'm not vibing, I am cooking.**
+
 ## Why This Isn't on npm
 
 I'm done with the JavaScript dependency circus.
