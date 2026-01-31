@@ -14,4 +14,9 @@
  * @property {string | false} [websocket] Path to websocket handler file, or false to disable. Default: false
  */
 
+/**
+ * @typedef {Object} LifecyclePluginOptions
+ * @property {number} [shutdownTimeout] Timeout in seconds before forced exit during shutdown. Default: 30
+ */
+
 export {};

@@ -1,3 +1,4 @@
+export { lifecyclePlugin } from './plugin.js';
 import { readFileSync, existsSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { compress } from './compress.js';
