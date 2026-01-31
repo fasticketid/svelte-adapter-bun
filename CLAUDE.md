@@ -56,6 +56,18 @@ Build-time adapter (`src/index.js`) + runtime template files (`src/files/`). The
 
 Tests use `bun:test`. Pattern: create temp directories in `beforeEach`, clean up in `afterEach`. Tests for `handler.js` re-implement the static server logic locally because the runtime version uses template token globals that don't exist outside a real build.
 
+## Code Style
+
+All code comments must be in **English, casual & blunt**. Short, direct, no fluff. Say what it does or why, then stop.
+
+Good: `// Skip precompressed variants`
+Good: `// Bun.file().slice() uses exclusive end — fix issue #65`
+Good: `// CVE fix: reject protocol injection`
+Bad: `// This function is responsible for handling the compression of files`
+Bad: `// Here we check if the value is valid before proceeding`
+
+Match the tone already in the codebase. If the comment doesn't add anything the code doesn't already say, don't write it.
+
 ## Don'ts
 
 - Never suggest installing this adapter via a package manager. Copy-paste only.
