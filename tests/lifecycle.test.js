@@ -3,7 +3,11 @@ import { test, expect, describe, beforeEach, afterEach, mock } from 'bun:test';
 // Re-implement emit_and_await for isolated unit testing.
 // The runtime version lives in index.js as a template file with global tokens.
 
-async function emit_and_await(event: string, ...args: unknown[]) {
+/**
+ * @param {string} event
+ * @param {...*} args
+ */
+async function emit_and_await(event, ...args) {
 	const listeners = process.listeners(event);
 	await Promise.all(listeners.map((fn) => fn(...args)));
 }
@@ -16,11 +20,12 @@ describe('emit_and_await()', () => {
 	});
 
 	test('calls all listeners with correct args', async () => {
-		const calls: unknown[][] = [];
-		process.on(EVENT, (...args: unknown[]) => {
+		/** @type {unknown[][]} */
+		const calls = [];
+		process.on(EVENT, (/** @type {*} */ ...args) => {
 			calls.push(args);
 		});
-		process.on(EVENT, (...args: unknown[]) => {
+		process.on(EVENT, (/** @type {*} */ ...args) => {
 			calls.push(args);
 		});
 
@@ -33,7 +38,8 @@ describe('emit_and_await()', () => {
 	});
 
 	test('awaits async listeners', async () => {
-		const order: number[] = [];
+		/** @type {number[]} */
+		const order = [];
 
 		process.on(EVENT, async () => {
 			await new Promise((r) => setTimeout(r, 10));
@@ -75,7 +81,8 @@ describe('emit_and_await()', () => {
 	});
 
 	test('handles mixed sync and async listeners', async () => {
-		const order: string[] = [];
+		/** @type {string[]} */
+		const order = [];
 
 		process.on(EVENT, () => {
 			order.push('sync');
@@ -101,9 +108,10 @@ describe('sveltekit:startup contract', () => {
 	});
 
 	test('payload contains server, host, port, socket_path', async () => {
-		let received: Record<string, unknown> = {};
+		/** @type {Record<string, unknown>} */
+		let received = {};
 
-		process.on(EVENT, (payload: Record<string, unknown>) => {
+		process.on(EVENT, (/** @type {Record<string, unknown>} */ payload) => {
 			received = payload;
 		});
 
@@ -126,9 +134,10 @@ describe('sveltekit:startup contract', () => {
 	});
 
 	test('socket_path mode sets host and port to undefined', async () => {
-		let received: Record<string, unknown> = {};
+		/** @type {Record<string, unknown>} */
+		let received = {};
 
-		process.on(EVENT, (payload: Record<string, unknown>) => {
+		process.on(EVENT, (/** @type {Record<string, unknown>} */ payload) => {
 			received = payload;
 		});
 
@@ -155,9 +164,10 @@ describe('sveltekit:shutdown contract', () => {
 	});
 
 	test('receives reason string SIGINT', async () => {
-		let received: unknown;
+		/** @type {*} */
+		let received;
 
-		process.on(EVENT, (reason: unknown) => {
+		process.on(EVENT, (/** @type {*} */ reason) => {
 			received = reason;
 		});
 
@@ -167,9 +177,10 @@ describe('sveltekit:shutdown contract', () => {
 	});
 
 	test('receives reason string SIGTERM', async () => {
-		let received: unknown;
+		/** @type {*} */
+		let received;
 
-		process.on(EVENT, (reason: unknown) => {
+		process.on(EVENT, (/** @type {*} */ reason) => {
 			received = reason;
 		});
 
@@ -187,7 +198,8 @@ describe('shutdown sequence', () => {
 	});
 
 	test('server.stop() is called before listeners execute', async () => {
-		const order: string[] = [];
+		/** @type {string[]} */
+		const order = [];
 
 		const mock_server = {
 			stop: () => {
@@ -207,7 +219,8 @@ describe('shutdown sequence', () => {
 	});
 
 	test('listener error does not prevent shutdown completion', async () => {
-		const completed: string[] = [];
+		/** @type {string[]} */
+		const completed = [];
 
 		process.on(SHUTDOWN_EVENT, () => {
 			throw new Error('listener failed');

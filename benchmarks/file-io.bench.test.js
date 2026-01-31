@@ -8,21 +8,25 @@ import {
 	formatTable,
 	formatComparison,
 	generateData,
-	tmpDir,
-	type BenchResult
-} from './helpers.ts';
+	tmpDir
+} from './helpers.js';
+
+/** @typedef {import('./helpers.js').BenchResult} BenchResult */
 
 const SIZES = [
 	{ label: '1KB', bytes: 1024, iterations: 1000 },
 	{ label: '10KB', bytes: 10240, iterations: 1000 },
 	{ label: '100KB', bytes: 102400, iterations: 500 },
 	{ label: '1MB', bytes: 1048576, iterations: 200 }
-] as const;
+];
 
-let tmp: { path: string; cleanup: () => void };
+/** @type {{ path: string, cleanup: () => void }} */
+let tmp;
 
-const allReadResults: Array<{ label: string; results: BenchResult[] }> = [];
-const allWriteResults: Array<{ label: string; results: BenchResult[] }> = [];
+/** @type {Array<{ label: string, results: BenchResult[] }>} */
+const allReadResults = [];
+/** @type {Array<{ label: string, results: BenchResult[] }>} */
+const allWriteResults = [];
 
 beforeAll(() => {
 	tmp = tmpDir('file-io');
@@ -39,8 +43,10 @@ describe('File read', () => {
 		const data = generateData(bytes);
 
 		describe(`Size: ${label}`, () => {
-			const results: BenchResult[] = [];
-			let readPath: string;
+			/** @type {BenchResult[]} */
+			const results = [];
+			/** @type {string} */
+			let readPath;
 
 			test('setup', () => {
 				readPath = join(tmp.path, `read-${label}.bin`);
@@ -94,7 +100,8 @@ describe('File write', () => {
 		const data = generateData(bytes);
 
 		describe(`Size: ${label}`, () => {
-			const results: BenchResult[] = [];
+			/** @type {BenchResult[]} */
+			const results = [];
 
 			test('Bun.write()', async () => {
 				const p = join(tmp.path, `write-bun-${label}.bin`);

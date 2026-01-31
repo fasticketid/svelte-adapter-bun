@@ -1,8 +1,10 @@
 import { readFileSync, existsSync } from 'node:fs';
 import { join, resolve } from 'node:path';
-import { compress } from './compress.ts';
-import type { Adapter } from '@sveltejs/kit';
-import type { AdapterOptions, CompressOptions } from './types.ts';
+import { compress } from './compress.js';
+
+/** @typedef {import('@sveltejs/kit').Adapter} Adapter */
+/** @typedef {import('./types.js').AdapterOptions} AdapterOptions */
+/** @typedef {import('./types.js').CompressOptions} CompressOptions */
 
 // Node built-in modules to externalize from the bundle
 const NODE_BUILTINS = [
@@ -52,7 +54,11 @@ const EXTERNAL_BUILTINS = [
 	...NODE_BUILTINS.map((m) => `node:${m}`)
 ];
 
-export default function adapter(opts: AdapterOptions = {}): Adapter {
+/**
+ * @param {AdapterOptions} [opts={}]
+ * @returns {Adapter}
+ */
+export default function adapter(opts = {}) {
 	const {
 		out = 'build',
 		precompress = true,
@@ -85,7 +91,8 @@ export default function adapter(opts: AdapterOptions = {}): Adapter {
 			if (precompress) {
 				builder.log.minor('Compressing assets...');
 
-				const compress_options: CompressOptions =
+				/** @type {CompressOptions} */
+				const compress_options =
 					typeof precompress === 'object' ? precompress : {};
 
 				await compress(client_dir, compress_options);
@@ -128,7 +135,8 @@ export const base_path = ${JSON.stringify(builder.config.paths.base)};
 			builder.log.minor('Bundling with Bun.build()...');
 
 			// Read package.json for external dependencies
-			let pkg_dependencies: string[] = [];
+			/** @type {string[]} */
+			let pkg_dependencies = [];
 			try {
 				const pkg_path = resolve('package.json');
 				const pkg = JSON.parse(readFileSync(pkg_path, 'utf-8'));

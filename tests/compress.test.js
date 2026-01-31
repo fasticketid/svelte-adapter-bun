@@ -1,7 +1,7 @@
 import { test, expect, beforeEach, afterEach } from 'bun:test';
 import { mkdirSync, rmSync } from 'node:fs';
 import { join } from 'node:path';
-import { compress } from '../src/compress.ts';
+import { compress } from '../src/compress.js';
 
 const TMP_DIR = join(import.meta.dir, '.tmp-compress');
 
@@ -13,7 +13,11 @@ afterEach(() => {
 	rmSync(TMP_DIR, { recursive: true, force: true });
 });
 
-async function writeFile(name: string, content: string) {
+/**
+ * @param {string} name
+ * @param {string} content
+ */
+async function writeFile(name, content) {
 	await Bun.write(join(TMP_DIR, name), content);
 }
 

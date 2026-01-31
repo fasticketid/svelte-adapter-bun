@@ -3,10 +3,11 @@ import { test, expect, describe } from 'bun:test';
 // Re-implement get_origin logic for unit testing (the runtime version
 // lives in handler.js as a template file with global tokens).
 
-function get_origin(
-	headers: Headers,
-	opts: { protocol_header?: string; host_header?: string; port_header?: string } = {}
-) {
+/**
+ * @param {Headers} headers
+ * @param {{ protocol_header?: string, host_header?: string, port_header?: string }} [opts={}]
+ */
+function get_origin(headers, opts = {}) {
 	const { protocol_header, host_header, port_header } = opts;
 
 	const protocol = decodeURIComponent(

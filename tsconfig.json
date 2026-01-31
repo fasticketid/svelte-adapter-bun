@@ -6,10 +6,9 @@
 		"moduleDetection": "force",
 		"jsx": "react-jsx",
 		"allowJs": true,
+		"checkJs": true,
 
 		"moduleResolution": "bundler",
-		"allowImportingTsExtensions": true,
-		"verbatimModuleSyntax": true,
 		"noEmit": true,
 
 		"strict": true,
@@ -24,6 +23,6 @@
 
 		"types": ["bun-types"]
 	},
-	"include": ["src/**/*.ts", "tests/**/*.ts", "benchmarks/**/*.ts"],
+	"include": ["src/**/*.js", "src/**/*.d.ts", "tests/**/*.js", "benchmarks/**/*.js"],
 	"exclude": ["node_modules", "build", "src/files"]
 }

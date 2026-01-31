@@ -1,5 +1,6 @@
 import { brotliCompressSync, constants } from 'node:zlib';
-import type { CompressOptions } from './types.ts';
+
+/** @typedef {import('./types.js').CompressOptions} CompressOptions */
 
 const DEFAULT_EXTENSIONS = [
 	'html',
@@ -16,7 +17,11 @@ const DEFAULT_EXTENSIONS = [
 	'map'
 ];
 
-export async function compress(directory: string, options: CompressOptions = {}) {
+/**
+ * @param {string} directory
+ * @param {CompressOptions} [options={}]
+ */
+export async function compress(directory, options = {}) {
 	const extensions = options.files ?? DEFAULT_EXTENSIONS;
 	const do_gzip = options.gzip !== false;
 	const do_brotli = options.brotli !== false;
@@ -32,7 +37,8 @@ export async function compress(directory: string, options: CompressOptions = {})
 			const data = await Bun.file(file_path).arrayBuffer();
 			const buffer = new Uint8Array(data);
 
-			const tasks: Promise<number>[] = [];
+			/** @type {Promise<number>[]} */
+			const tasks = [];
 
 			if (do_gzip) {
 				const compressed = Bun.gzipSync(buffer, { level: 9 });

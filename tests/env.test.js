@@ -14,11 +14,16 @@ describe('env()', () => {
 			}
 		}
 		for (const [key, value] of Object.entries(original_env)) {
-			Bun.env[key] = value as string;
+			Bun.env[key] = /** @type {string} */ (value);
 		}
 	});
 
-	function env(name: string, fallback?: string, prefix = '') {
+	/**
+	 * @param {string} name
+	 * @param {string} [fallback]
+	 * @param {string} [prefix='']
+	 */
+	function env(name, fallback, prefix = '') {
 		const prefixed = prefix + name;
 		if (prefixed in Bun.env) return Bun.env[prefixed];
 		if (name in Bun.env) return Bun.env[name];
@@ -59,7 +64,11 @@ describe('env()', () => {
 });
 
 describe('timeout_env()', () => {
-	function timeout_env(name: string, fallback: number) {
+	/**
+	 * @param {string} name
+	 * @param {number} fallback
+	 */
+	function timeout_env(name, fallback) {
 		const value = Bun.env[name];
 		if (value === undefined) return fallback;
 
@@ -81,7 +90,7 @@ describe('timeout_env()', () => {
 			}
 		}
 		for (const [key, value] of Object.entries(original_env)) {
-			Bun.env[key] = value as string;
+			Bun.env[key] = /** @type {string} */ (value);
 		}
 	});
 

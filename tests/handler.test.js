@@ -7,7 +7,8 @@ const TMP_DIR = join(import.meta.dir, '.tmp-handler');
 // Re-implement the static file server logic for unit testing.
 // The runtime version lives in handler.js as a template file with global tokens.
 
-const MIME_TYPES: Record<string, string> = {
+/** @type {Record<string, string>} */
+const MIME_TYPES = {
 	'.html': 'text/html',
 	'.css': 'text/css',
 	'.js': 'application/javascript',
@@ -19,27 +20,40 @@ const MIME_TYPES: Record<string, string> = {
 	'.map': 'application/json'
 };
 
-function get_mime(name: string): string {
+/**
+ * @param {string} name
+ * @returns {string}
+ */
+function get_mime(name) {
 	const ext = name.slice(name.lastIndexOf('.'));
 	return MIME_TYPES[ext] || 'application/octet-stream';
 }
 
-function build_file_server(dir: string) {
+/**
+ * @param {string} dir
+ */
+function build_file_server(dir) {
 	const { readdirSync } = require('node:fs');
 
-	type FileEntry = {
-		abs: string;
-		size: number;
-		mtime: number;
-		etag: string;
-		type: string;
-		has_br: boolean;
-		has_gz: boolean;
-	};
+	/**
+	 * @typedef {Object} FileEntry
+	 * @property {string} abs
+	 * @property {number} size
+	 * @property {number} mtime
+	 * @property {string} etag
+	 * @property {string} type
+	 * @property {boolean} has_br
+	 * @property {boolean} has_gz
+	 */
 
-	const files = new Map<string, FileEntry>();
+	/** @type {Map<string, FileEntry>} */
+	const files = new Map();
 
-	function scan(current_dir: string, prefix = '') {
+	/**
+	 * @param {string} current_dir
+	 * @param {string} [prefix='']
+	 */
+	function scan(current_dir, prefix = '') {
 		const entries = readdirSync(current_dir);
 		for (const entry of entries) {
 			const abs = join(current_dir, entry);
@@ -73,7 +87,11 @@ function build_file_server(dir: string) {
 	}
 	scan(dir);
 
-	return function handle(request: Request): Response | null {
+	/**
+	 * @param {Request} request
+	 * @returns {Response | null}
+	 */
+	return function handle(request) {
 		const url = new URL(request.url);
 		const file = files.get(url.pathname);
 		if (!file) return null;
@@ -94,7 +112,8 @@ function build_file_server(dir: string) {
 		// Content negotiation
 		const accept_encoding = request.headers.get('accept-encoding') || '';
 		let serve_path = file.abs;
-		let content_encoding: string | null = null;
+		/** @type {string | null} */
+		let content_encoding = null;
 
 		if (file.has_br && accept_encoding.includes('br')) {
 			serve_path = file.abs + '.br';
@@ -117,8 +136,8 @@ function build_file_server(dir: string) {
 		if (range_header && !content_encoding) {
 			const match = range_header.match(/bytes=(\d+)-(\d*)/);
 			if (match) {
-				const start = parseInt(match[1]!, 10);
-				const end = match[2] ? parseInt(match[2], 10) : file.size - 1;
+				const start = parseInt(/** @type {string} */ (match[1]), 10);
+				const end = match[2] ? parseInt(/** @type {string} */ (match[2]), 10) : file.size - 1;
 
 				if (start >= file.size || end >= file.size || start > end) {
 					return new Response(null, {
@@ -155,11 +174,11 @@ describe('ETag and 304', () => {
 
 		const handle = build_file_server(TMP_DIR);
 		const req = new Request('http://localhost/index.html');
-		const res = handle(req);
+		const res = /** @type {Response} */ (handle(req));
 
 		expect(res).not.toBeNull();
-		expect(res!.status).toBe(200);
-		expect(res!.headers.get('etag')).toMatch(/^W\/"/);
+		expect(res.status).toBe(200);
+		expect(res.headers.get('etag')).toMatch(/^W\/"/);
 	});
 
 	test('returns 304 when ETag matches', () => {
@@ -168,30 +187,30 @@ describe('ETag and 304', () => {
 		const handle = build_file_server(TMP_DIR);
 
 		// First request to get ETag
-		const first = handle(new Request('http://localhost/index.html'));
-		const etag = first!.headers.get('etag')!;
+		const first = /** @type {Response} */ (handle(new Request('http://localhost/index.html')));
+		const etag = /** @type {string} */ (first.headers.get('etag'));
 
 		// Second request with If-None-Match
-		const second = handle(
+		const second = /** @type {Response} */ (handle(
 			new Request('http://localhost/index.html', {
 				headers: { 'If-None-Match': etag }
 			})
-		);
+		));
 
-		expect(second!.status).toBe(304);
+		expect(second.status).toBe(304);
 	});
 
 	test('returns 200 when ETag does not match', () => {
 		writeFileSync(join(TMP_DIR, 'index.html'), '<h1>Hello</h1>');
 
 		const handle = build_file_server(TMP_DIR);
-		const res = handle(
+		const res = /** @type {Response} */ (handle(
 			new Request('http://localhost/index.html', {
 				headers: { 'If-None-Match': 'W/"wrong"' }
 			})
-		);
+		));
 
-		expect(res!.status).toBe(200);
+		expect(res.status).toBe(200);
 	});
 });
 
@@ -201,16 +220,16 @@ describe('Range requests (206)', () => {
 		writeFileSync(join(TMP_DIR, 'data.txt'), content);
 
 		const handle = build_file_server(TMP_DIR);
-		const res = handle(
+		const res = /** @type {Response} */ (handle(
 			new Request('http://localhost/data.txt', {
 				headers: { Range: 'bytes=0-4' }
 			})
-		);
+		));
 
-		expect(res!.status).toBe(206);
-		expect(res!.headers.get('content-range')).toBe(`bytes 0-4/${content.length}`);
+		expect(res.status).toBe(206);
+		expect(res.headers.get('content-range')).toBe(`bytes 0-4/${content.length}`);
 
-		const body = await res!.text();
+		const body = await res.text();
 		expect(body).toBe('Hello');
 	});
 
@@ -219,14 +238,14 @@ describe('Range requests (206)', () => {
 		writeFileSync(join(TMP_DIR, 'data.txt'), content);
 
 		const handle = build_file_server(TMP_DIR);
-		const res = handle(
+		const res = /** @type {Response} */ (handle(
 			new Request('http://localhost/data.txt', {
 				headers: { Range: 'bytes=7-12' }
 			})
-		);
+		));
 
-		expect(res!.status).toBe(206);
-		const body = await res!.text();
+		expect(res.status).toBe(206);
+		const body = await res.text();
 		expect(body).toBe('World!');
 	});
 
@@ -234,13 +253,13 @@ describe('Range requests (206)', () => {
 		writeFileSync(join(TMP_DIR, 'small.txt'), 'hi');
 
 		const handle = build_file_server(TMP_DIR);
-		const res = handle(
+		const res = /** @type {Response} */ (handle(
 			new Request('http://localhost/small.txt', {
 				headers: { Range: 'bytes=100-200' }
 			})
-		);
+		));
 
-		expect(res!.status).toBe(416);
+		expect(res.status).toBe(416);
 	});
 });
 
@@ -251,14 +270,14 @@ describe('precompressed file negotiation', () => {
 		writeFileSync(join(TMP_DIR, 'app.js.gz'), 'gzip-compressed');
 
 		const handle = build_file_server(TMP_DIR);
-		const res = handle(
+		const res = /** @type {Response} */ (handle(
 			new Request('http://localhost/app.js', {
 				headers: { 'Accept-Encoding': 'gzip, br' }
 			})
-		);
+		));
 
-		expect(res!.headers.get('content-encoding')).toBe('br');
-		expect(res!.headers.get('vary')).toBe('Accept-Encoding');
+		expect(res.headers.get('content-encoding')).toBe('br');
+		expect(res.headers.get('vary')).toBe('Accept-Encoding');
 	});
 
 	test('serves gzip when client only accepts gzip', () => {
@@ -267,13 +286,13 @@ describe('precompressed file negotiation', () => {
 		writeFileSync(join(TMP_DIR, 'app.js.gz'), 'gzip-compressed');
 
 		const handle = build_file_server(TMP_DIR);
-		const res = handle(
+		const res = /** @type {Response} */ (handle(
 			new Request('http://localhost/app.js', {
 				headers: { 'Accept-Encoding': 'gzip' }
 			})
-		);
+		));
 
-		expect(res!.headers.get('content-encoding')).toBe('gzip');
+		expect(res.headers.get('content-encoding')).toBe('gzip');
 	});
 
 	test('serves original when client accepts no encoding', () => {
@@ -282,10 +301,10 @@ describe('precompressed file negotiation', () => {
 		writeFileSync(join(TMP_DIR, 'app.js.gz'), 'gzip-compressed');
 
 		const handle = build_file_server(TMP_DIR);
-		const res = handle(new Request('http://localhost/app.js'));
+		const res = /** @type {Response} */ (handle(new Request('http://localhost/app.js')));
 
-		expect(res!.headers.get('content-encoding')).toBeNull();
-		expect(res!.headers.get('vary')).toBe('Accept-Encoding');
+		expect(res.headers.get('content-encoding')).toBeNull();
+		expect(res.headers.get('vary')).toBe('Accept-Encoding');
 	});
 
 	test('sets Vary header even for uncompressed response when compressed exists', () => {
@@ -293,9 +312,9 @@ describe('precompressed file negotiation', () => {
 		writeFileSync(join(TMP_DIR, 'style.css.gz'), 'gzipped');
 
 		const handle = build_file_server(TMP_DIR);
-		const res = handle(new Request('http://localhost/style.css'));
+		const res = /** @type {Response} */ (handle(new Request('http://localhost/style.css')));
 
-		expect(res!.headers.get('vary')).toBe('Accept-Encoding');
+		expect(res.headers.get('vary')).toBe('Accept-Encoding');
 	});
 });
 
@@ -304,18 +323,18 @@ describe('MIME types', () => {
 		writeFileSync(join(TMP_DIR, 'page.html'), '<h1>Test</h1>');
 
 		const handle = build_file_server(TMP_DIR);
-		const res = handle(new Request('http://localhost/page.html'));
+		const res = /** @type {Response} */ (handle(new Request('http://localhost/page.html')));
 
-		expect(res!.headers.get('content-type')).toBe('text/html');
+		expect(res.headers.get('content-type')).toBe('text/html');
 	});
 
 	test('serves js with correct content type', () => {
 		writeFileSync(join(TMP_DIR, 'script.js'), 'void 0');
 
 		const handle = build_file_server(TMP_DIR);
-		const res = handle(new Request('http://localhost/script.js'));
+		const res = /** @type {Response} */ (handle(new Request('http://localhost/script.js')));
 
-		expect(res!.headers.get('content-type')).toBe('application/javascript');
+		expect(res.headers.get('content-type')).toBe('application/javascript');
 	});
 
 	test('returns null for non-existent files', () => {
@@ -332,9 +351,9 @@ describe('Content-Length', () => {
 		writeFileSync(join(TMP_DIR, 'test.txt'), content);
 
 		const handle = build_file_server(TMP_DIR);
-		const res = handle(new Request('http://localhost/test.txt'));
+		const res = /** @type {Response} */ (handle(new Request('http://localhost/test.txt')));
 
-		expect(res!.headers.get('content-length')).toBe(String(content.length));
+		expect(res.headers.get('content-length')).toBe(String(content.length));
 	});
 
 	test('omits content-length for compressed responses', () => {
@@ -342,12 +361,12 @@ describe('Content-Length', () => {
 		writeFileSync(join(TMP_DIR, 'app.js.gz'), 'gzipped-content');
 
 		const handle = build_file_server(TMP_DIR);
-		const res = handle(
+		const res = /** @type {Response} */ (handle(
 			new Request('http://localhost/app.js', {
 				headers: { 'Accept-Encoding': 'gzip' }
 			})
-		);
+		));
 
-		expect(res!.headers.get('content-length')).toBeNull();
+		expect(res.headers.get('content-length')).toBeNull();
 	});
 });

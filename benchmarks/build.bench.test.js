@@ -1,15 +1,22 @@
 import { test, describe, afterAll, beforeAll } from 'bun:test';
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { benchAsync, formatTable, formatComparison, tmpDir, type BenchResult } from './helpers.ts';
+import { benchAsync, formatTable, formatComparison, tmpDir } from './helpers.js';
 
-let tmp: { path: string; cleanup: () => void };
-let srcDir: string;
-let bunOutDir: string;
-let rollupOutDir: string;
+/** @typedef {import('./helpers.js').BenchResult} BenchResult */
+
+/** @type {{ path: string, cleanup: () => void }} */
+let tmp;
+/** @type {string} */
+let srcDir;
+/** @type {string} */
+let bunOutDir;
+/** @type {string} */
+let rollupOutDir;
 
 const ITERATIONS = 20;
-const allResults: BenchResult[] = [];
+/** @type {BenchResult[]} */
+const allResults = [];
 
 beforeAll(() => {
 	tmp = tmpDir('build');
@@ -201,9 +208,14 @@ export default app;
 
 /**
  * Generate filler code to simulate realistic module sizes.
+ *
+ * @param {string} prefix
+ * @param {number} targetBytes
+ * @returns {string}
  */
-function generateFiller(prefix: string, targetBytes: number): string {
-	const lines: string[] = [];
+function generateFiller(prefix, targetBytes) {
+	/** @type {string[]} */
+	const lines = [];
 	let size = 0;
 	let i = 0;
 	while (size < targetBytes) {

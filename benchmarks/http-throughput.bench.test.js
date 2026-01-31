@@ -1,14 +1,20 @@
 import { test, describe, afterAll, beforeAll } from 'bun:test';
 import { writeFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { benchAsync, formatTable, tmpDir, generateHtml, type BenchResult } from './helpers.ts';
+import { benchAsync, formatTable, tmpDir, generateHtml } from './helpers.js';
 
-let server: ReturnType<typeof Bun.serve>;
-let baseUrl: string;
-let tmp: { path: string; cleanup: () => void };
+/** @typedef {import('./helpers.js').BenchResult} BenchResult */
+
+/** @type {ReturnType<typeof Bun.serve>} */
+let server;
+/** @type {string} */
+let baseUrl;
+/** @type {{ path: string, cleanup: () => void }} */
+let tmp;
 
 const ITERATIONS = 2000;
-const allResults: BenchResult[] = [];
+/** @type {BenchResult[]} */
+const allResults = [];
 
 beforeAll(() => {
 	tmp = tmpDir('http-throughput');
@@ -52,7 +58,7 @@ beforeAll(() => {
 describe('HTTP throughput (Bun.serve)', () => {
 	test('correctness: endpoints respond correctly', async () => {
 		const jsonRes = await fetch(`${baseUrl}/json`);
-		const json = (await jsonRes.json()) as { message: string };
+		const json = /** @type {{ message: string }} */ (await jsonRes.json());
 		if (!json.message) throw new Error('JSON endpoint broken');
 
 		const staticRes = await fetch(`${baseUrl}/static`);

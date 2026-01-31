@@ -1,24 +1,33 @@
 import { test, describe, afterAll, beforeAll } from 'bun:test';
 import { mkdirSync, writeFileSync, readdirSync, statSync } from 'node:fs';
 import { join } from 'node:path';
-import { bench, formatTable, formatComparison, tmpDir, type BenchResult } from './helpers.ts';
+import { bench, formatTable, formatComparison, tmpDir } from './helpers.js';
+
+/** @typedef {import('./helpers.js').BenchResult} BenchResult */
 
 const DIR_SIZES = [
 	{ label: 'small (50 files)', count: 50, iterations: 2000 },
 	{ label: 'medium (500 files)', count: 500, iterations: 500 },
 	{ label: 'large (2000 files)', count: 2000, iterations: 100 }
-] as const;
+];
 
 const EXTENSIONS = ['.html', '.js', '.css', '.json', '.svg', '.txt', '.map', '.png', '.woff2'];
 
-let tmp: { path: string; cleanup: () => void };
+/** @type {{ path: string, cleanup: () => void }} */
+let tmp;
 
-const allResults: Array<{ label: string; results: BenchResult[] }> = [];
+/** @type {Array<{ label: string, results: BenchResult[] }>} */
+const allResults = [];
 
 /**
  * Recursive readdirSync + filter (tiny-glob/totalist style approach used by adapter-node).
+ *
+ * @param {string} dir
+ * @param {RegExp} pattern
+ * @param {string[]} [results=[]]
+ * @returns {string[]}
  */
-function recursiveReaddir(dir: string, pattern: RegExp, results: string[] = []): string[] {
+function recursiveReaddir(dir, pattern, results = []) {
 	const entries = readdirSync(dir);
 	for (const entry of entries) {
 		const abs = join(dir, entry);
@@ -34,9 +43,13 @@ function recursiveReaddir(dir: string, pattern: RegExp, results: string[] = []):
 
 /**
  * Modern Node.js recursive readdir + filter.
+ *
+ * @param {string} dir
+ * @param {RegExp} pattern
+ * @returns {string[]}
  */
-function modernReaddir(dir: string, pattern: RegExp): string[] {
-	const all = readdirSync(dir, { recursive: true }) as string[];
+function modernReaddir(dir, pattern) {
+	const all = /** @type {string[]} */ (readdirSync(dir, { recursive: true }));
 	return all.filter((f) => pattern.test(f)).map((f) => join(dir, f));
 }
 
@@ -56,8 +69,8 @@ beforeAll(() => {
 		const allDirs = [baseDir, ...subdirs.map((s) => join(baseDir, s))];
 
 		for (let i = 0; i < count; i++) {
-			const ext = EXTENSIONS[i % EXTENSIONS.length]!;
-			const dir = allDirs[i % allDirs.length]!;
+			const ext = /** @type {string} */ (EXTENSIONS[i % EXTENSIONS.length]);
+			const dir = /** @type {string} */ (allDirs[i % allDirs.length]);
 			writeFileSync(join(dir, `file${i}${ext}`), `content-${i}`);
 		}
 	}
@@ -68,8 +81,10 @@ describe('Glob / file discovery', () => {
 		const dirName = label.replace(/[^a-z0-9]/gi, '_');
 
 		describe(label, () => {
-			const results: BenchResult[] = [];
-			let baseDir: string;
+			/** @type {BenchResult[]} */
+			const results = [];
+			/** @type {string} */
+			let baseDir;
 
 			test('setup', () => {
 				baseDir = join(tmp.path, dirName);

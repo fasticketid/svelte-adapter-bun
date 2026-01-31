@@ -1,9 +1,12 @@
 import { test, describe, afterAll, beforeAll } from 'bun:test';
 import { mkdirSync, writeFileSync, statSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
-import { bench, formatTable, tmpDir, type BenchResult } from './helpers.ts';
+import { bench, formatTable, tmpDir } from './helpers.js';
 
-const MIME_TYPES: Record<string, string> = {
+/** @typedef {import('./helpers.js').BenchResult} BenchResult */
+
+/** @type {Record<string, string>} */
+const MIME_TYPES = {
 	'.html': 'text/html',
 	'.css': 'text/css',
 	'.js': 'application/javascript',
@@ -15,29 +18,42 @@ const MIME_TYPES: Record<string, string> = {
 	'.map': 'application/json'
 };
 
-function get_mime(name: string): string {
+/**
+ * @param {string} name
+ * @returns {string}
+ */
+function get_mime(name) {
 	const ext = name.slice(name.lastIndexOf('.'));
 	return MIME_TYPES[ext] || 'application/octet-stream';
 }
 
-type FileEntry = {
-	abs: string;
-	size: number;
-	mtime: number;
-	etag: string;
-	type: string;
-	has_br: boolean;
-	has_gz: boolean;
-};
+/**
+ * @typedef {Object} FileEntry
+ * @property {string} abs
+ * @property {number} size
+ * @property {number} mtime
+ * @property {string} etag
+ * @property {string} type
+ * @property {boolean} has_br
+ * @property {boolean} has_gz
+ */
 
 /**
- * Build a static file server handler (ported from tests/handler.test.ts).
+ * Build a static file server handler (ported from tests/handler.test.js).
  * This is the exact runtime logic our adapter uses.
+ *
+ * @param {string} dir
+ * @returns {(request: Request) => Response | null}
  */
-function build_file_server(dir: string): (request: Request) => Response | null {
-	const files = new Map<string, FileEntry>();
+function build_file_server(dir) {
+	/** @type {Map<string, FileEntry>} */
+	const files = new Map();
 
-	function scan(current_dir: string, prefix = '') {
+	/**
+	 * @param {string} current_dir
+	 * @param {string} [prefix='']
+	 */
+	function scan(current_dir, prefix = '') {
 		const entries = readdirSync(current_dir);
 		for (const entry of entries) {
 			const abs = join(current_dir, entry);
@@ -71,7 +87,11 @@ function build_file_server(dir: string): (request: Request) => Response | null {
 	}
 	scan(dir);
 
-	return function handle(request: Request): Response | null {
+	/**
+	 * @param {Request} request
+	 * @returns {Response | null}
+	 */
+	return function handle(request) {
 		const url = new URL(request.url);
 		const file = files.get(url.pathname);
 		if (!file) return null;
@@ -92,7 +112,8 @@ function build_file_server(dir: string): (request: Request) => Response | null {
 		// Content negotiation
 		const accept_encoding = request.headers.get('accept-encoding') || '';
 		let serve_path = file.abs;
-		let content_encoding: string | null = null;
+		/** @type {string | null} */
+		let content_encoding = null;
 
 		if (file.has_br && accept_encoding.includes('br')) {
 			serve_path = file.abs + '.br';
@@ -115,7 +136,7 @@ function build_file_server(dir: string): (request: Request) => Response | null {
 		if (range_header && !content_encoding) {
 			const match = range_header.match(/bytes=(\d+)-(\d*)/);
 			if (match) {
-				const start = parseInt(match[1]!, 10);
+				const start = parseInt(/** @type {string} */ (match[1]), 10);
 				const end = match[2] ? parseInt(match[2], 10) : file.size - 1;
 
 				if (start >= file.size || end >= file.size || start > end) {
@@ -139,12 +160,16 @@ function build_file_server(dir: string): (request: Request) => Response | null {
 	};
 }
 
-let tmp: { path: string; cleanup: () => void };
-let handle: (request: Request) => Response | null;
-let etag: string;
+/** @type {{ path: string, cleanup: () => void }} */
+let tmp;
+/** @type {(request: Request) => Response | null} */
+let handle;
+/** @type {string} */
+let etag;
 
 const ITERATIONS = 5000;
-const allResults: BenchResult[] = [];
+/** @type {BenchResult[]} */
+const allResults = [];
 
 beforeAll(() => {
 	tmp = tmpDir('static-serve');
@@ -172,8 +197,8 @@ beforeAll(() => {
 	handle = build_file_server(tmp.path);
 
 	// Get ETag for 304 tests
-	const first = handle(new Request('http://localhost/index.html'));
-	etag = first!.headers.get('etag')!;
+	const first = /** @type {Response} */ (handle(new Request('http://localhost/index.html')));
+	etag = /** @type {string} */ (first.headers.get('etag'));
 });
 
 describe('Static file handler latency', () => {

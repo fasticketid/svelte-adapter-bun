@@ -7,30 +7,40 @@ import {
 	benchAsync,
 	formatTable,
 	formatComparison,
-	generateData,
-	type BenchResult
-} from './helpers.ts';
+	generateData
+} from './helpers.js';
+
+/** @typedef {import('./helpers.js').BenchResult} BenchResult */
 
 const SIZES = [
 	{ label: '1KB', bytes: 1024, iterations: 2000 },
 	{ label: '10KB', bytes: 10240, iterations: 2000 },
 	{ label: '100KB', bytes: 102400, iterations: 500 },
 	{ label: '1MB', bytes: 1048576, iterations: 100 }
-] as const;
+];
 
 // Pre-generate buffers for each size
-const buffers = new Map<string, Uint8Array>();
+/** @type {Map<string, Uint8Array>} */
+const buffers = new Map();
 for (const s of SIZES) {
 	buffers.set(s.label, generateData(s.bytes));
 }
 
-const allGzipResults: Array<{ label: string; results: BenchResult[] }> = [];
-const allDecompressResults: Array<{ label: string; results: BenchResult[] }> = [];
+/** @type {Array<{ label: string, results: BenchResult[] }>} */
+const allGzipResults = [];
+/** @type {Array<{ label: string, results: BenchResult[] }>} */
+const allDecompressResults = [];
 
 // Writable that collects chunks into a buffer
 class CollectStream extends (await import('node:stream')).Writable {
-	chunks: Buffer[] = [];
-	override _write(chunk: Buffer, _encoding: string, callback: () => void) {
+	chunks = /** @type {Buffer[]} */ ([]);
+	/**
+	 * @override
+	 * @param {Buffer} chunk
+	 * @param {string} _encoding
+	 * @param {() => void} callback
+	 */
+	_write(chunk, _encoding, callback) {
 		this.chunks.push(chunk);
 		callback();
 	}
@@ -41,19 +51,20 @@ class CollectStream extends (await import('node:stream')).Writable {
 
 describe('Gzip compression', () => {
 	for (const { label, iterations } of SIZES) {
-		const buffer = buffers.get(label)!;
+		const buffer = /** @type {Uint8Array} */ (buffers.get(label));
 
 		describe(`Size: ${label}`, () => {
-			const results: BenchResult[] = [];
+			/** @type {BenchResult[]} */
+			const results = [];
 
 			test('correctness: outputs match', () => {
-				const buf = new Uint8Array(buffer.buffer) as Uint8Array<ArrayBuffer>;
+				const buf = /** @type {Uint8Array<ArrayBuffer>} */ (new Uint8Array(buffer.buffer));
 				const bunResult = Bun.gzipSync(buf, { level: 9 });
 				const nodeResult = gzipSync(buffer, { level: 9 });
 
 				// Verify decompression roundtrip produces the same original
 				const bunDecompressed = Bun.gunzipSync(
-					new Uint8Array(bunResult.buffer) as Uint8Array<ArrayBuffer>
+					new Uint8Array(bunResult.buffer)
 				);
 				const nodeDecompressed = gunzipSync(nodeResult);
 
@@ -67,7 +78,7 @@ describe('Gzip compression', () => {
 			});
 
 			test('Bun.gzipSync', () => {
-				const buf = new Uint8Array(buffer.buffer) as Uint8Array<ArrayBuffer>;
+				const buf = /** @type {Uint8Array<ArrayBuffer>} */ (new Uint8Array(buffer.buffer));
 				results.push(
 					bench(
 						'Bun.gzipSync',
@@ -119,7 +130,7 @@ describe('Gzip compression', () => {
 
 describe('Brotli compression', () => {
 	for (const { label, bytes } of SIZES) {
-		const buffer = buffers.get(label)!;
+		const buffer = /** @type {Uint8Array} */ (buffers.get(label));
 
 		// Brotli quality 11 is extremely slow for large inputs
 		const brotliIterations =
@@ -149,15 +160,16 @@ describe('Brotli compression', () => {
 
 describe('Gzip decompression', () => {
 	for (const { label, iterations } of SIZES) {
-		const buffer = buffers.get(label)!;
-		const buf = new Uint8Array(buffer.buffer) as Uint8Array<ArrayBuffer>;
+		const buffer = /** @type {Uint8Array} */ (buffers.get(label));
+		const buf = /** @type {Uint8Array<ArrayBuffer>} */ (new Uint8Array(buffer.buffer));
 		const compressed = Bun.gzipSync(buf, { level: 9 });
 
 		describe(`Size: ${label}`, () => {
-			const results: BenchResult[] = [];
+			/** @type {BenchResult[]} */
+			const results = [];
 
 			test('Bun.gunzipSync', () => {
-				const comp = new Uint8Array(compressed.buffer) as Uint8Array<ArrayBuffer>;
+				const comp = new Uint8Array(compressed.buffer);
 				results.push(
 					bench(
 						'Bun.gunzipSync',

@@ -4,7 +4,7 @@
 	"type": "module",
 	"private": true,
 	"exports": {
-		".": "./src/index.ts"
+		".": "./src/index.js"
 	},
 	"files": [
 		"src"
