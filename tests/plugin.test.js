@@ -195,57 +195,12 @@ describe('lifecyclePlugin', () => {
 		});
 	});
 
-	describe('signal listener cleanup', () => {
-		test('SIGINT listener is removed after httpServer close', async () => {
-			const before = process.listenerCount('SIGINT');
-
-			const postHook = /** @type {Function} */ (
-				/** @type {any} */ (plugin).configureServer(
-					createMockViteServer(httpServer)
-				)
-			);
-			postHook();
-
-			expect(process.listenerCount('SIGINT')).toBe(before + 1);
-
-			httpServer.emit('close');
-			await new Promise((r) => setTimeout(r, 10));
-
-			expect(process.listenerCount('SIGINT')).toBe(before);
-		});
-
-		test('SIGTERM listener is removed after httpServer close', async () => {
-			const before = process.listenerCount('SIGTERM');
-
-			const postHook = /** @type {Function} */ (
-				/** @type {any} */ (plugin).configureServer(
-					createMockViteServer(httpServer)
-				)
-			);
-			postHook();
-
-			expect(process.listenerCount('SIGTERM')).toBe(before + 1);
-
-			httpServer.emit('close');
-			await new Promise((r) => setTimeout(r, 10));
-
-			expect(process.listenerCount('SIGTERM')).toBe(before);
-		});
-	});
-
 	describe('null httpServer', () => {
 		test('no-op when httpServer is null (middleware mode)', () => {
 			const result = /** @type {any} */ (plugin).configureServer(
 				createMockViteServer(null)
 			);
 			expect(result).toBeUndefined();
-		});
-	});
-
-	describe('options', () => {
-		test('accepts custom shutdownTimeout', () => {
-			const custom = lifecyclePlugin({ shutdownTimeout: 5 });
-			expect(custom.name).toBe('svelte-adapter-bun:lifecycle');
 		});
 	});
 

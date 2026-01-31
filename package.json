@@ -4,7 +4,8 @@
 	"type": "module",
 	"private": true,
 	"exports": {
-		".": "./src/index.js"
+		".": "./src/index.js",
+		"./plugin": "./src/plugin.js"
 	},
 	"files": [
 		"src"

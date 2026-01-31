@@ -1,5 +1,3 @@
-/** @typedef {import('./types.js').LifecyclePluginOptions} LifecyclePluginOptions */
-
 /**
  * Emit a process event and await all listeners in parallel.
  * @param {string} event @param {...any} args
@@ -13,12 +11,9 @@ async function emit_and_await(event, ...args) {
  * Vite plugin that emits sveltekit:startup and sveltekit:shutdown events in dev mode,
  * matching the production runtime behavior in src/files/index.js.
  *
- * @param {LifecyclePluginOptions} [options={}]
  * @returns {import('vite').Plugin}
  */
-export function lifecyclePlugin(options = {}) {
-	const { shutdownTimeout = 30 } = options;
-
+export function lifecyclePlugin() {
 	return {
 		name: 'svelte-adapter-bun:lifecycle',
 		apply: 'serve',
@@ -31,32 +26,6 @@ export function lifecyclePlugin(options = {}) {
 
 			/** @type {boolean} */
 			let shutting_down = false;
-
-			/**
-			 * Gracefully shut down dev server and emit sveltekit:shutdown.
-			 * @param {string} reason - Signal name or 'close'
-			 */
-			async function shutdown(/** @type {string} */ reason) {
-				if (shutting_down) return;
-				shutting_down = true;
-
-				const timer = setTimeout(() => {
-					console.log('Shutdown timeout reached, forcing exit');
-					process.exit(1);
-				}, shutdownTimeout * 1000);
-				timer.unref();
-
-				try {
-					await emit_and_await('sveltekit:shutdown', reason);
-				} catch (e) {
-					console.error('Error in sveltekit:shutdown listener:', e);
-				}
-			}
-
-			/** @param {string} signal */
-			function onSignal(signal) {
-				shutdown(signal);
-			}
 
 			// Post-middleware hook — runs after Vite sets up its own middleware
 			return () => {
@@ -98,17 +67,14 @@ export function lifecyclePlugin(options = {}) {
 					httpServer.on('listening', emitStartup);
 				}
 
-				process.on('SIGINT', onSignal);
-				process.on('SIGTERM', onSignal);
-
-				// Cleanup on server close (HMR restart) — prevent listener leaks
+				// Fire-and-forget shutdown event — Vite handles the actual cleanup
 				httpServer.on('close', () => {
-					process.removeListener('SIGINT', onSignal);
-					process.removeListener('SIGTERM', onSignal);
+					if (shutting_down) return;
+					shutting_down = true;
 
-					if (!shutting_down) {
-						shutdown('close');
-					}
+					emit_and_await('sveltekit:shutdown', 'close').catch((e) => {
+						console.error('Error in sveltekit:shutdown listener:', e);
+					});
 				});
 			};
 		}
