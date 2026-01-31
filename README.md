@@ -1,10 +1,22 @@
 # svelte-adapter-bun
 
-SvelteKit adapter that produces a standalone Bun server via `Bun.serve()`. Zero runtime dependencies.
+SvelteKit adapter for Bun. `Bun.serve()`, zero runtime dependencies, copy-paste into your project.
 
-**I'm not vibing, I am cooking.**
+## Why This Isn't on npm
 
-This is copy-paste source code, not an npm package. You drop it into your project and own it. Or install directly from GitHub if you prefer.
+I'm done with the JavaScript dependency circus.
+
+The ecosystem is drowning in packages. Thousands of libraries wrapping trivial logic that any developer (or AI) can read, understand, and maintain in 10 minutes. We `npm install` without thinking twice, then wonder why `node_modules` is 500MB for a todo app.
+
+Worse — every dependency is a trust decision. You're letting a stranger's code run in your build, your server, your users' browsers. One maintainer gets compromised, one malicious update slips through, and your project ships malware. This isn't hypothetical. It keeps happening. Supply chain attacks are the easiest way to hit thousands of projects at once, and the JS ecosystem is the #1 target.
+
+So this adapter will never be on npm, yarn, or any registry. Not today, not ever.
+
+**Copy the source code into your project. Read it. Own it.** That's it. You don't need to trust me, you don't need to trust a registry, you don't need to worry about what happens when I push the next update. The code is right there — you can audit every line.
+
+I do offer a `bun add github:...` option for convenience, but I genuinely recommend against it. Even for my own code. **Don't trust me. Don't trust anyone. Read the source.**
+
+If you want to support this project: report issues, star the repo, watch for updates. That's worth more than any download count.
 
 ## Requirements
 
