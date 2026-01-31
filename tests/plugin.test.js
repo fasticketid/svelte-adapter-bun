@@ -232,4 +232,104 @@ describe('lifecyclePlugin', () => {
 			expect(viteServer.config.logger.warn).not.toHaveBeenCalled();
 		});
 	});
+
+	describe('configurePreviewServer', () => {
+		test('has configurePreviewServer hook', () => {
+			expect(typeof plugin.configurePreviewServer).toBe('function');
+		});
+
+		test('emits sveltekit:startup when httpServer fires listening', async () => {
+			/** @type {any} */
+			let received;
+			process.on('sveltekit:startup', (payload) => {
+				received = payload;
+			});
+
+			const postHook = /** @type {Function} */ (
+				/** @type {any} */ (plugin).configurePreviewServer(
+					createMockViteServer(httpServer)
+				)
+			);
+			postHook();
+
+			httpServer.emit('listening');
+			await new Promise((r) => setTimeout(r, 10));
+
+			expect(received).toBeDefined();
+		});
+
+		test('startup payload contains server, host, port, socket_path', async () => {
+			/** @type {any} */
+			let received;
+			process.on('sveltekit:startup', (payload) => {
+				received = payload;
+			});
+
+			const postHook = /** @type {Function} */ (
+				/** @type {any} */ (plugin).configurePreviewServer(
+					createMockViteServer(httpServer)
+				)
+			);
+			postHook();
+
+			httpServer.emit('listening');
+			await new Promise((r) => setTimeout(r, 10));
+
+			expect(received).toHaveProperty('server');
+			expect(received.server).toBe(httpServer);
+			expect(received).toHaveProperty('host', '127.0.0.1');
+			expect(received).toHaveProperty('port', 5173);
+			expect(received).toHaveProperty('socket_path', undefined);
+		});
+
+		test('emits sveltekit:shutdown on httpServer close', async () => {
+			/** @type {any} */
+			let received;
+			process.on('sveltekit:shutdown', (reason) => {
+				received = reason;
+			});
+
+			const postHook = /** @type {Function} */ (
+				/** @type {any} */ (plugin).configurePreviewServer(
+					createMockViteServer(httpServer)
+				)
+			);
+			postHook();
+
+			httpServer.emit('close');
+			await new Promise((r) => setTimeout(r, 10));
+
+			expect(received).toBe('close');
+		});
+
+		test('double shutdown only emits once', async () => {
+			/** @type {string[]} */
+			const reasons = [];
+			process.on('sveltekit:shutdown', (reason) => {
+				reasons.push(reason);
+			});
+
+			const postHook = /** @type {Function} */ (
+				/** @type {any} */ (plugin).configurePreviewServer(
+					createMockViteServer(httpServer)
+				)
+			);
+			postHook();
+
+			httpServer.emit('close');
+			await new Promise((r) => setTimeout(r, 10));
+
+			httpServer.emit('close');
+			await new Promise((r) => setTimeout(r, 10));
+
+			expect(reasons).toEqual(['close']);
+		});
+
+		test('no-op when httpServer is null', () => {
+			const result = /** @type {any} */ (plugin).configurePreviewServer(
+				createMockViteServer(null)
+			);
+			expect(result).toBeUndefined();
+		});
+	});
 });
