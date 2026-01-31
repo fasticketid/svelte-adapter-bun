@@ -130,6 +130,33 @@ Bun.serve({
 });
 ```
 
+## Lifecycle Hooks
+
+The server emits process-level events for startup and shutdown, allowing you to initialize resources (database connections, caches) and clean them up gracefully.
+
+### `sveltekit:startup`
+
+Emitted after `Bun.serve()` starts. Receives an object with `server`, `host`, `port`, and `socket_path`.
+
+```js
+process.on('sveltekit:startup', async ({ server, host, port, socket_path }) => {
+  await db.connect();
+  console.log(`DB connected, server listening on ${host}:${port}`);
+});
+```
+
+### `sveltekit:shutdown`
+
+Emitted on `SIGINT` or `SIGTERM` after `server.stop()` is called. Receives the signal name as a string. A `SHUTDOWN_TIMEOUT` (default 30s) guard will force-exit if listeners take too long.
+
+```js
+process.on('sveltekit:shutdown', async (reason) => {
+  console.log(`Shutting down: ${reason}`);
+  await db.disconnect();
+  await cache.flush();
+});
+```
+
 ## Type Augmentations
 
 The adapter augments `App.Platform` with:
@@ -193,6 +220,47 @@ Environment=PORT=3000
 [Install]
 WantedBy=multi-user.target
 ```
+
+### Reverse Proxy
+
+When running behind a reverse proxy, set the appropriate headers so SvelteKit can determine the client's real protocol, host, and IP:
+
+```bash
+PROTOCOL_HEADER=x-forwarded-proto
+HOST_HEADER=x-forwarded-host
+ADDRESS_HEADER=x-forwarded-for
+XFF_DEPTH=1
+```
+
+#### nginx
+
+```nginx
+server {
+    listen 80;
+    server_name example.com;
+
+    location / {
+        proxy_pass http://127.0.0.1:3000;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection "upgrade";
+        proxy_set_header Host $host;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_set_header X-Forwarded-Host $host;
+    }
+}
+```
+
+#### Caddy
+
+```caddyfile
+example.com {
+    reverse_proxy 127.0.0.1:3000
+}
+```
+
+Caddy automatically sets `X-Forwarded-For`, `X-Forwarded-Proto`, and `X-Forwarded-Host`.
 
 ## Differences from adapter-node
 
