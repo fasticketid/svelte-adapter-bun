@@ -1,3 +1,7 @@
+// Stash originals before any patching
+const _process_on = process.on;
+const _process_once = process.once;
+
 /**
  * Emit a process event and await all listeners in parallel.
  * @param {string} event @param {...any} args
@@ -5,6 +9,62 @@
 async function emit_and_await(event, ...args) {
 	const listeners = process.listeners(event);
 	await Promise.all(listeners.map((fn) => fn(...args)));
+}
+
+// ---------------------------------------------------------------------------
+// Sticky events for sveltekit:* lifecycle
+//
+// In dev/preview, SvelteKit lazy-loads hooks.server.js on the first HTTP
+// request — well after httpServer emits 'listening'. Any process.on() calls
+// inside hooks.server.js therefore miss the initial sveltekit:startup event.
+//
+// We patch process.on/once so that for any sveltekit:* event that already
+// fired, late listeners are replayed immediately via nextTick.
+// ---------------------------------------------------------------------------
+
+/** @type {Map<string, any[]>} event name → args from the last emit */
+let sticky_events = new Map();
+
+/** @param {string} event @param {Function} fn */
+function maybe_replay(event, fn) {
+	if (event.startsWith('sveltekit:') && sticky_events.has(event)) {
+		const args = sticky_events.get(event);
+		process.nextTick(() => {
+			try {
+				fn(...args);
+			} catch (e) {
+				console.error(`Error in ${event} listener:`, e);
+			}
+		});
+	}
+}
+
+function install_sticky() {
+	process.on = process.addListener = function (event, fn) {
+		const r = _process_on.call(this, event, fn);
+		maybe_replay(event, fn);
+		return r;
+	};
+	process.once = function (event, fn) {
+		const r = _process_once.call(this, event, fn);
+		maybe_replay(event, fn);
+		return r;
+	};
+}
+
+function uninstall_sticky() {
+	process.on = process.addListener = _process_on;
+	process.once = _process_once;
+	sticky_events = new Map();
+}
+
+/**
+ * Emit and record for sticky replay.
+ * @param {string} event @param {...any} args
+ */
+async function sticky_emit(event, ...args) {
+	sticky_events.set(event, args);
+	await emit_and_await(event, ...args);
 }
 
 /**
@@ -21,6 +81,8 @@ function setup_lifecycle(httpServer, logger, websocketPath) {
 
 	/** @type {{ close: () => void } | null} */
 	let wsServer = null;
+
+	install_sticky();
 
 	// Announce
 	logger.info('lifecycle plugin active', { timestamp: true });
@@ -56,7 +118,7 @@ function setup_lifecycle(httpServer, logger, websocketPath) {
 			addr && typeof addr === 'object' ? addr.port : undefined;
 
 		try {
-			await emit_and_await('sveltekit:startup', {
+			await sticky_emit('sveltekit:startup', {
 				server: httpServer,
 				host,
 				port,
@@ -80,9 +142,13 @@ function setup_lifecycle(httpServer, logger, websocketPath) {
 
 		if (wsServer) wsServer.close();
 
-		emit_and_await('sveltekit:shutdown', 'close').catch((e) => {
-			console.error('Error in sveltekit:shutdown listener:', e);
-		});
+		sticky_emit('sveltekit:shutdown', 'close')
+			.catch((e) => {
+				console.error('Error in sveltekit:shutdown listener:', e);
+			})
+			.finally(() => {
+				uninstall_sticky();
+			});
 	});
 }
 

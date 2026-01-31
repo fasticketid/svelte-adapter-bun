@@ -2,6 +2,10 @@ import { test, expect, describe, beforeEach, afterEach, mock } from 'bun:test';
 import { EventEmitter } from 'node:events';
 import { lifecyclePlugin } from '../src/plugin.js';
 
+// Stash originals — plugin patches process.on for sticky events
+const _process_on = process.on;
+const _process_once = process.once;
+
 /**
  * Mock httpServer using EventEmitter to simulate Node's http.Server.
  * @returns {EventEmitter & { listening: boolean, address: () => { address: string, port: number } }}
@@ -43,6 +47,9 @@ describe('lifecyclePlugin', () => {
 	});
 
 	afterEach(() => {
+		// Restore originals in case sticky patch is still active
+		process.on = process.addListener = _process_on;
+		process.once = _process_once;
 		process.removeAllListeners('sveltekit:startup');
 		process.removeAllListeners('sveltekit:shutdown');
 	});
@@ -230,6 +237,147 @@ describe('lifecyclePlugin', () => {
 			postHook();
 
 			expect(viteServer.config.logger.warn).not.toHaveBeenCalled();
+		});
+	});
+
+	describe('sticky events', () => {
+		test('late startup listener receives payload via replay', async () => {
+			const postHook = /** @type {Function} */ (
+				/** @type {any} */ (plugin).configureServer(
+					createMockViteServer(httpServer)
+				)
+			);
+			postHook();
+
+			httpServer.emit('listening');
+			await new Promise((r) => setTimeout(r, 10));
+
+			// Register AFTER startup already fired (simulates hooks.server.js lazy load)
+			/** @type {any} */
+			let received;
+			process.on('sveltekit:startup', (payload) => {
+				received = payload;
+			});
+
+			await new Promise((r) => setTimeout(r, 10));
+
+			expect(received).toBeDefined();
+			expect(received.server).toBe(httpServer);
+			expect(received).toHaveProperty('host', '127.0.0.1');
+			expect(received).toHaveProperty('port', 5173);
+		});
+
+		test('late shutdown listener receives reason via replay', async () => {
+			const postHook = /** @type {Function} */ (
+				/** @type {any} */ (plugin).configureServer(
+					createMockViteServer(httpServer)
+				)
+			);
+			postHook();
+
+			httpServer.emit('close');
+			await new Promise((r) => setTimeout(r, 10));
+
+			// Register AFTER shutdown already fired
+			/** @type {any} */
+			let received;
+			// Restore patched on briefly to register via original (uninstall runs in .finally)
+			// shutdown uninstalls sticky, so late listener should NOT replay
+			process.on('sveltekit:shutdown', (reason) => {
+				received = reason;
+			});
+
+			await new Promise((r) => setTimeout(r, 10));
+
+			// After shutdown, sticky is uninstalled — no replay
+			expect(received).toBeUndefined();
+		});
+
+		test('replay stops after shutdown', async () => {
+			const postHook = /** @type {Function} */ (
+				/** @type {any} */ (plugin).configureServer(
+					createMockViteServer(httpServer)
+				)
+			);
+			postHook();
+
+			httpServer.emit('listening');
+			await new Promise((r) => setTimeout(r, 10));
+
+			httpServer.emit('close');
+			await new Promise((r) => setTimeout(r, 10));
+
+			/** @type {any} */
+			let received;
+			process.on('sveltekit:startup', (payload) => {
+				received = payload;
+			});
+
+			await new Promise((r) => setTimeout(r, 10));
+
+			expect(received).toBeUndefined();
+		});
+
+		test('replay error in late listener does not throw', async () => {
+			const postHook = /** @type {Function} */ (
+				/** @type {any} */ (plugin).configureServer(
+					createMockViteServer(httpServer)
+				)
+			);
+			postHook();
+
+			httpServer.emit('listening');
+			await new Promise((r) => setTimeout(r, 10));
+
+			process.on('sveltekit:startup', () => {
+				throw new Error('late boom');
+			});
+
+			// Should not throw
+			await new Promise((r) => setTimeout(r, 10));
+		});
+
+		test('process.once also gets replayed', async () => {
+			const postHook = /** @type {Function} */ (
+				/** @type {any} */ (plugin).configureServer(
+					createMockViteServer(httpServer)
+				)
+			);
+			postHook();
+
+			httpServer.emit('listening');
+			await new Promise((r) => setTimeout(r, 10));
+
+			/** @type {any} */
+			let received;
+			process.once('sveltekit:startup', (payload) => {
+				received = payload;
+			});
+
+			await new Promise((r) => setTimeout(r, 10));
+
+			expect(received).toBeDefined();
+			expect(received.server).toBe(httpServer);
+		});
+
+		test('non-sveltekit events are not affected', async () => {
+			const postHook = /** @type {Function} */ (
+				/** @type {any} */ (plugin).configureServer(
+					createMockViteServer(httpServer)
+				)
+			);
+			postHook();
+
+			// Patched process.on should pass through non-sveltekit events normally
+			let called = false;
+			process.on('test:random', () => {
+				called = true;
+			});
+
+			await new Promise((r) => setTimeout(r, 10));
+
+			expect(called).toBe(false);
+			process.removeAllListeners('test:random');
 		});
 	});
 
