@@ -68,6 +68,10 @@ Bad: `// Here we check if the value is valid before proceeding`
 
 Match the tone already in the codebase. If the comment doesn't add anything the code doesn't already say, don't write it.
 
+## GitHub Issues
+
+When creating GitHub issues from commit history (via `/create-issues` skill or manually), always label with `ai-author` so we can distinguish AI-generated issues from human-created ones. Group commits by logical feature/fix — one issue per feature, not one per commit. Use `bug` or `enhancement` as the category label.
+
 ## Don'ts
 
 - Never suggest installing this adapter via a package manager. Copy-paste only.

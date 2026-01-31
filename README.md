@@ -17,7 +17,7 @@ This is copy-paste source code, not an npm package. You drop it into your projec
 2. Update `svelte.config.js`:
 
 ```js
-import adapter from './src/adapter-bun/index.ts';
+import adapter from './src/adapter-bun/index.js';
 
 export default {
   kit: {
@@ -29,7 +29,35 @@ export default {
 };
 ```
 
-3. Build and run:
+3. Add the lifecycle plugin to `vite.config.js`:
+
+```js
+import { sveltekit } from '@sveltejs/kit/vite';
+import { lifecyclePlugin } from './src/adapter-bun/plugin.js';
+import { defineConfig } from 'vite';
+
+export default defineConfig({
+  plugins: [sveltekit(), lifecyclePlugin()]
+});
+```
+
+This is **required** for `sveltekit:startup` and `sveltekit:shutdown` events to work in dev and preview modes. Without it, lifecycle hooks in `hooks.server.js` won't fire during development.
+
+If you use WebSocket, pass the handler path:
+
+```js
+lifecyclePlugin({ websocket: 'src/websocket.js' })
+```
+
+4. Run dev with Bun native APIs:
+
+```bash
+bunx --bun vite dev
+```
+
+Plain `vite dev` runs under Node.js — Bun-specific APIs like `Bun.serve()`, `Bun.file()`, etc. won't be available. The plugin warns you if Bun runtime is not detected.
+
+5. Build and run production:
 
 ```bash
 bun run build
@@ -81,11 +109,11 @@ All variables support an optional prefix configured via `envPrefix`.
 
 Create a WebSocket handler file:
 
-```ts
-// src/websocket.ts
-import type { ServerWebSocket, Server } from 'bun';
+```js
+// src/websocket.js
 
-export function upgrade(request: Request, server: Server): Response | undefined {
+/** @param {Request} request @param {import('bun').Server} server */
+export function upgrade(request, server) {
   const success = server.upgrade(request, {
     data: { /* custom data */ }
   });
@@ -93,15 +121,18 @@ export function upgrade(request: Request, server: Server): Response | undefined 
   return new Response('Upgrade failed', { status: 500 });
 }
 
-export function open(ws: ServerWebSocket) {
+/** @param {import('bun').ServerWebSocket} ws */
+export function open(ws) {
   console.log('Client connected');
 }
 
-export function message(ws: ServerWebSocket, message: string | Buffer) {
+/** @param {import('bun').ServerWebSocket} ws @param {string | Buffer} message */
+export function message(ws, message) {
   ws.send(message);
 }
 
-export function close(ws: ServerWebSocket) {
+/** @param {import('bun').ServerWebSocket} ws */
+export function close(ws) {
   console.log('Client disconnected');
 }
 ```
@@ -110,7 +141,7 @@ Point the adapter at it:
 
 ```js
 adapter({
-  websocket: 'src/websocket.ts'
+  websocket: 'src/websocket.js'
 })
 ```
 
@@ -136,9 +167,15 @@ Bun.serve({
 
 The server emits process-level events for startup and shutdown. Use them to init and tear down resources like DB connections or caches.
 
+These events work in all modes:
+- **Production** — fired by the Bun runtime (`src/files/index.js`)
+- **Dev / Preview** — fired by the Vite lifecycle plugin (`src/plugin.js`). You **must** add `lifecyclePlugin()` to your `vite.config.js` (see Installation step 3)
+
+In dev mode, `hooks.server.js` loads lazily on the first request. The plugin handles this with sticky event replay — late listeners automatically receive events they missed.
+
 ### `sveltekit:startup`
 
-Fires after `Bun.serve()` starts.
+Fires after `Bun.serve()` starts (production) or after the Vite HTTP server is listening (dev/preview).
 
 ```js
 process.on('sveltekit:startup', async ({ server, host, port, socket_path }) => {

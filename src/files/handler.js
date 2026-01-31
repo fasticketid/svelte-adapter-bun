@@ -3,7 +3,7 @@
 import { Server } from 'SERVER';
 import { manifest, prerendered, base_path } from 'MANIFEST';
 import { env } from 'ENV';
-import { readdirSync, statSync } from 'node:fs';
+import { existsSync, readdirSync, statSync } from 'node:fs';
 import { join, extname, resolve } from 'node:path';
 
 const server = new Server(manifest);
@@ -95,7 +95,9 @@ function sirv(dir, opts = {}) {
 	/** @type {Map<string, { abs: string, size: number, mtime: number, etag: string | null, type: string, has_br: boolean, has_gz: boolean }>} */
 	const files = new Map();
 
-	// Scan all files
+	// Scan all files (skip if directory doesn't exist, e.g. no prerendered pages)
+	if (!existsSync(dir)) return () => null;
+
 	totalist(dir, (rel, abs, stats) => {
 		// Skip precompressed variants
 		if (rel.endsWith('.br') || rel.endsWith('.gz')) return;
@@ -297,9 +299,9 @@ const body_size_limit = parse_body_size_limit(env('BODY_SIZE_LIMIT'));
 export default function createHandler(options = {}) {
 	const build_options = options.build_options || BUILD_OPTIONS;
 
-	// Set up static file servers
-	const client_dir = resolve(build_options.client_directory);
-	const prerendered_dir = resolve(build_options.prerendered_directory);
+	// Set up static file servers — resolve relative to this file, not CWD
+	const client_dir = join(import.meta.dir, build_options.client_directory);
+	const prerendered_dir = join(import.meta.dir, build_options.prerendered_directory);
 
 	const serve_client = sirv(client_dir, {
 		etag: true,
@@ -449,4 +451,5 @@ export default function createHandler(options = {}) {
 	return { httpserver, websocket };
 }
 
-export { env, BUILD_OPTIONS as build_options };
+const build_options = BUILD_OPTIONS;
+export { env, build_options };
