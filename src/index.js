@@ -56,8 +56,11 @@ const EXTERNAL_BUILTINS = [
 ];
 
 /**
+ * SvelteKit adapter for Bun. Produces a standalone server via Bun.serve().
  * @param {AdapterOptions} [opts={}]
  * @returns {Adapter}
+ * @example adapter({ out: 'build', precompress: true })
+ * @example adapter({ websocket: 'src/websocket.ts', envPrefix: 'APP_' })
  */
 export default function adapter(opts = {}) {
 	const {
@@ -71,6 +74,10 @@ export default function adapter(opts = {}) {
 	return {
 		name: 'svelte-adapter-bun',
 
+		/**
+		 * Build pipeline: copy assets → compress → bundle with Bun.build() → copy runtime templates.
+		 * @param {import('@sveltejs/kit').Builder} builder
+		 */
 		async adapt(builder) {
 			const tmp = builder.getBuildDirectory('adapter-bun');
 			const out_dir = resolve(out);

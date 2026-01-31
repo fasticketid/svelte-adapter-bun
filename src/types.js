@@ -1,8 +1,9 @@
 /**
  * @typedef {Object} CompressOptions
- * @property {string[]} [files]
- * @property {boolean} [gzip]
- * @property {boolean} [brotli]
+ * @property {string[]} [files] File extensions to compress (default: html, js, json, css, svg, xml, wasm, txt, ico, mjs, cjs, map)
+ * @property {boolean} [gzip] Enable gzip compression (default: true)
+ * @property {boolean} [brotli] Enable brotli compression (default: true)
+ * @example { files: ['html', 'js'], brotli: false }
  */
 
 /**

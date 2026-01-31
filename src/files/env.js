@@ -2,9 +2,11 @@
 
 /**
  * Look up an environment variable with the configured prefix.
+ * Checks prefixed name first, then unprefixed, then fallback.
  * @param {string} name
  * @param {string} [fallback]
  * @returns {string}
+ * @example env('PORT', '3000') // returns PORT value or '3000'
  */
 export function env(name, fallback) {
 	const prefix = ENV_PREFIX;
@@ -19,9 +21,11 @@ export function env(name, fallback) {
 
 /**
  * Parse an environment variable as a non-negative integer (for timeouts).
+ * Throws on negative, non-numeric, or empty string values.
  * @param {string} name
  * @param {number} fallback
  * @returns {number}
+ * @example timeout_env('SHUTDOWN_TIMEOUT', 30) // 30 if unset
  */
 export function timeout_env(name, fallback) {
 	const value = env(name);

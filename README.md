@@ -2,6 +2,8 @@
 
 SvelteKit adapter that produces a standalone Bun server via `Bun.serve()`. Zero runtime dependencies.
 
+**I'm not vibing, I am cooking.**
+
 This is copy-paste source code, not an npm package. You drop it into your project and own it. See [SKILL_INSTALL.md](./SKILL_INSTALL.md) for AI-assisted installation.
 
 ## Requirements

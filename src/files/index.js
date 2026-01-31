@@ -5,13 +5,17 @@ import { timeout_env } from 'ENV';
 
 const { httpserver, websocket } = createHandler();
 
+// Runtime config from env vars
 const socket_path = env('SOCKET_PATH');
 const host = env('HOST', '0.0.0.0');
 const port = parseInt(env('PORT', '3000'));
 const idle_timeout = timeout_env('IDLE_TIMEOUT', 0) || undefined;
 const shutdown_timeout = timeout_env('SHUTDOWN_TIMEOUT', 30);
 
-/** @param {string} event @param {...any} args */
+/**
+ * Emit a process event and await all listeners in parallel.
+ * @param {string} event @param {...any} args
+ */
 async function emit_and_await(event, ...args) {
 	const listeners = process.listeners(event);
 	await Promise.all(listeners.map((fn) => fn(...args)));
@@ -27,7 +31,11 @@ const server = Bun.serve({
 	development: false
 });
 
-// Graceful shutdown (issues #52, #69)
+/**
+ * Gracefully shut down: stop server, emit sveltekit:shutdown, force-exit on timeout.
+ * Issues #52, #69.
+ * @param {string} reason - 'SIGINT' or 'SIGTERM'
+ */
 async function shutdown(reason) {
 	console.log('Shutting down gracefully...');
 	server.stop();

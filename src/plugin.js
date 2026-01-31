@@ -1,6 +1,9 @@
 /** @typedef {import('./types.js').LifecyclePluginOptions} LifecyclePluginOptions */
 
-/** @param {string} event @param {...any} args */
+/**
+ * Emit a process event and await all listeners in parallel.
+ * @param {string} event @param {...any} args
+ */
 async function emit_and_await(event, ...args) {
 	const listeners = process.listeners(event);
 	await Promise.all(listeners.map((fn) => fn(...args)));
@@ -29,6 +32,10 @@ export function lifecyclePlugin(options = {}) {
 			/** @type {boolean} */
 			let shutting_down = false;
 
+			/**
+			 * Gracefully shut down dev server and emit sveltekit:shutdown.
+			 * @param {string} reason - Signal name or 'close'
+			 */
 			async function shutdown(/** @type {string} */ reason) {
 				if (shutting_down) return;
 				shutting_down = true;

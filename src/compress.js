@@ -18,8 +18,12 @@ const DEFAULT_EXTENSIONS = [
 ];
 
 /**
+ * Precompress static assets with gzip and/or brotli.
+ * Scans directory for matching extensions, writes .gz and .br files alongside originals.
  * @param {string} directory
  * @param {CompressOptions} [options={}]
+ * @example await compress('/build/client')
+ * @example await compress('/build', { files: ['html'], gzip: false })
  */
 export async function compress(directory, options = {}) {
 	const extensions = options.files ?? DEFAULT_EXTENSIONS;

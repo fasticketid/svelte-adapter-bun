@@ -53,9 +53,11 @@ const MIME_TYPES = {
 };
 
 /**
- * Get MIME type from file extension.
+ * Get MIME type from file extension. Falls back to application/octet-stream.
  * @param {string} name
  * @returns {string}
+ * @example get_mime('app.js') // 'application/javascript'
+ * @example get_mime('font.woff2') // 'font/woff2'
  */
 function get_mime(name) {
 	const ext = extname(name).toLowerCase();
@@ -210,14 +212,13 @@ function sirv(dir, opts = {}) {
 	};
 }
 
-// --- Origin validation (CVE fix: issues #83, #62, #54, #58) ---
-
 const protocol_header = BUILD_OPTIONS.protocol_header?.toLowerCase();
 const host_header = BUILD_OPTIONS.host_header?.toLowerCase();
 const port_header = BUILD_OPTIONS.port_header?.toLowerCase();
 
 /**
  * Reconstruct request origin from proxy headers.
+ * CVE fix: rejects protocol injection via colon in header value (issues #83, #62, #54, #58).
  * @param {Headers} headers
  * @returns {string}
  */
@@ -250,6 +251,8 @@ function get_origin(headers) {
  * Parse a human-readable byte size string (e.g. "512K", "10M", "1G").
  * @param {string | number | undefined} input
  * @returns {number} bytes, or Infinity if unset
+ * @example parse_body_size_limit('10M') // 10485760
+ * @example parse_body_size_limit(undefined) // Infinity
  */
 function parse_body_size_limit(input) {
 	if (input === undefined || input === null) return Infinity;
@@ -286,8 +289,10 @@ const address_header = env('ADDRESS_HEADER')?.toLowerCase();
 const body_size_limit = parse_body_size_limit(env('BODY_SIZE_LIMIT'));
 
 /**
- * Create a composable handler (issue #55).
+ * Create a composable fetch handler with static file serving, prerendered pages, and SSR.
+ * Returns httpserver (fetch handler) and websocket config for Bun.serve().
  * @param {{ build_options?: typeof BUILD_OPTIONS }} [options]
+ * @example const { httpserver, websocket } = createHandler()
  */
 export default function createHandler(options = {}) {
 	const build_options = options.build_options || BUILD_OPTIONS;
