@@ -370,3 +370,105 @@ describe('Content-Length', () => {
 		expect(res.headers.get('content-length')).toBeNull();
 	});
 });
+
+describe('trailing slash 308 redirect', () => {
+	/**
+	 * Re-implement the prerendered + trailing slash redirect logic from handler.js.
+	 * @param {Set<string>} prerendered_set
+	 * @param {(req: Request) => Response | null} serve_prerendered
+	 * @param {string} [base_path='']
+	 */
+	function build_prerendered_handler(prerendered_set, serve_prerendered, base_path = '') {
+		/**
+		 * @param {Request} request
+		 * @returns {Response | null}
+		 */
+		return function handle(request) {
+			const url = new URL(request.url);
+			let prerendered_path = url.pathname;
+			if (base_path && prerendered_path.startsWith(base_path)) {
+				prerendered_path = prerendered_path.slice(base_path.length) || '/';
+			}
+
+			// Exact match
+			if (prerendered_set.has(prerendered_path)) {
+				const res = serve_prerendered(request);
+				if (res) return res;
+			}
+
+			// Toggle trailing slash — 308 redirect
+			const toggled = prerendered_path.endsWith('/')
+				? prerendered_path.slice(0, -1)
+				: prerendered_path + '/';
+
+			if (prerendered_set.has(toggled)) {
+				let location = base_path ? base_path + toggled : toggled;
+				if (url.search) location += url.search;
+				return new Response(null, {
+					status: 308,
+					headers: { location }
+				});
+			}
+
+			return null;
+		};
+	}
+
+	test('serves exact prerendered match directly', () => {
+		const prerendered = new Set(['/about']);
+		const serve = () => new Response('about page', { status: 200 });
+		const handle = build_prerendered_handler(prerendered, serve);
+
+		const res = /** @type {Response} */ (handle(new Request('http://localhost/about')));
+		expect(res.status).toBe(200);
+	});
+
+	test('308 redirects /about/ to /about when /about is prerendered', () => {
+		const prerendered = new Set(['/about']);
+		const serve = () => new Response('about page', { status: 200 });
+		const handle = build_prerendered_handler(prerendered, serve);
+
+		const res = /** @type {Response} */ (handle(new Request('http://localhost/about/')));
+		expect(res.status).toBe(308);
+		expect(res.headers.get('location')).toBe('/about');
+	});
+
+	test('308 redirects /about to /about/ when /about/ is prerendered', () => {
+		const prerendered = new Set(['/about/']);
+		const serve = () => new Response('about page', { status: 200 });
+		const handle = build_prerendered_handler(prerendered, serve);
+
+		const res = /** @type {Response} */ (handle(new Request('http://localhost/about')));
+		expect(res.status).toBe(308);
+		expect(res.headers.get('location')).toBe('/about/');
+	});
+
+	test('preserves query string in 308 redirect', () => {
+		const prerendered = new Set(['/about']);
+		const serve = () => new Response('about page', { status: 200 });
+		const handle = build_prerendered_handler(prerendered, serve);
+
+		const res = /** @type {Response} */ (handle(new Request('http://localhost/about/?ref=home')));
+		expect(res.status).toBe(308);
+		expect(res.headers.get('location')).toBe('/about?ref=home');
+	});
+
+	test('returns null for non-prerendered path', () => {
+		const prerendered = new Set(['/about']);
+		const serve = () => new Response('about page', { status: 200 });
+		const handle = build_prerendered_handler(prerendered, serve);
+
+		const res = handle(new Request('http://localhost/contact'));
+		expect(res).toBeNull();
+	});
+
+	test('handles base_path in 308 redirect', () => {
+		const prerendered = new Set(['/about']);
+		const serve = () => new Response('about page', { status: 200 });
+		const handle = build_prerendered_handler(prerendered, serve, '/app');
+
+		const res = /** @type {Response} */ (handle(new Request('http://localhost/app/about/')));
+		expect(res.status).toBe(308);
+		expect(res.headers.get('location')).toBe('/app/about');
+	});
+});

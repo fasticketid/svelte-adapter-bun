@@ -9,6 +9,7 @@ const { httpserver, websocket } = createHandler();
 const socket_path = env('SOCKET_PATH');
 const host = env('HOST', '0.0.0.0');
 const port = parseInt(env('PORT', '3000'));
+const path = socket_path || false;
 const idle_timeout = timeout_env('IDLE_TIMEOUT', 0) || undefined;
 const shutdown_timeout = timeout_env('SHUTDOWN_TIMEOUT', 30);
 
@@ -75,4 +76,4 @@ if (socket_path) {
 	console.log(`Listening on ${host}:${server.port}`);
 }
 
-export { server, host, port };
+export { server, host, port, path };

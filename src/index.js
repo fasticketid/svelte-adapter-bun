@@ -76,6 +76,7 @@ export default function adapter(opts = {}) {
 		name: 'svelte-adapter-bun',
 
 		supports: {
+			read: () => true,
 			instrumentation: () => true
 		},
 
@@ -232,7 +233,7 @@ export const base_path = ${JSON.stringify(builder.config.kit.paths.base)};
 					entrypoint: join(out_dir, 'index.js'),
 					instrumentation: join(out_dir, 'server', 'instrumentation.server.js'),
 					module: {
-						exports: ['server', 'host', 'port']
+						exports: ['server', 'host', 'port', 'path']
 					}
 				});
 			}

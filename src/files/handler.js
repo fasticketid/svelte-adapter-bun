@@ -354,15 +354,24 @@ export default function createHandler(options = {}) {
 			prerendered_path = prerendered_path.slice(base_path.length) || '/';
 		}
 
-		// Check prerendered set (try with trailing slash and .html)
-		const is_prerendered =
-			prerendered.has(prerendered_path) ||
-			prerendered.has(prerendered_path + '/') ||
-			prerendered.has(prerendered_path + '/index.html');
-
-		if (is_prerendered) {
+		// Exact match — serve directly
+		if (prerendered.has(prerendered_path)) {
 			const prerendered_response = serve_prerendered(request);
 			if (prerendered_response) return prerendered_response;
+		}
+
+		// Toggle trailing slash — 308 redirect if alternate exists
+		const toggled = prerendered_path.endsWith('/')
+			? prerendered_path.slice(0, -1)
+			: prerendered_path + '/';
+
+		if (prerendered.has(toggled)) {
+			let location = base_path ? base_path + toggled : toggled;
+			if (url.search) location += url.search;
+			return new Response(null, {
+				status: 308,
+				headers: { location }
+			});
 		}
 
 		// SSR handler
