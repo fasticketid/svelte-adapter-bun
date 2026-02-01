@@ -75,6 +75,10 @@ export default function adapter(opts = {}) {
 	return {
 		name: 'svelte-adapter-bun',
 
+		supports: {
+			instrumentation: () => true
+		},
+
 		/**
 		 * Build pipeline: copy assets → compress → bundle with Bun.build() → copy runtime templates.
 		 * @param {import('@sveltejs/kit').Builder} builder
@@ -154,8 +158,18 @@ export const base_path = ${JSON.stringify(builder.config.kit.paths.base)};
 				// No package.json or no dependencies
 			}
 
+			const has_instrumentation =
+				builder.hasServerInstrumentationFile?.() ?? false;
+
+			/** @type {string[]} */
+			const entrypoints = [join(tmp, 'index.js'), join(tmp, 'manifest.js')];
+
+			if (has_instrumentation) {
+				entrypoints.push(join(tmp, 'instrumentation.server.js'));
+			}
+
 			const build_result = await Bun.build({
-				entrypoints: [join(tmp, 'index.js'), join(tmp, 'manifest.js')],
+				entrypoints,
 				outdir: join(out_dir, 'server'),
 				target: 'bun',
 				format: 'esm',
@@ -212,13 +226,24 @@ export const base_path = ${JSON.stringify(builder.config.kit.paths.base)};
 				}
 			});
 
-			// 8. Copy websocket handler if configured
+			// 8. Instrumentation facade — loads instrumentation before app code
+			if (has_instrumentation) {
+				builder.instrument?.({
+					entrypoint: join(out_dir, 'index.js'),
+					instrumentation: join(out_dir, 'server', 'instrumentation.server.js'),
+					module: {
+						exports: ['server', 'host', 'port']
+					}
+				});
+			}
+
+			// 9. Copy websocket handler if configured
 			if (websocket && websocket_path) {
 				const ws_content = readFileSync(websocket_path, 'utf-8');
 				await Bun.write(join(out_dir, 'websocket.js'), ws_content);
 			}
 
-			// 9. Write output package.json
+			// 10. Write output package.json
 			const output_pkg = {
 				type: 'module',
 				scripts: {
