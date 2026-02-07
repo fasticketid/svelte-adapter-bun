@@ -1,11 +1,14 @@
 {
 	"name": "svelte-adapter-bun",
-	"version": "1.0.0",
+	"version": "1.2.1",
 	"type": "module",
 	"private": true,
 	"exports": {
 		".": "./src/index.js",
-		"./plugin": "./src/plugin.js"
+		"./plugin": {
+			"types": "./src/plugin.d.ts",
+			"default": "./src/plugin.js"
+		}
 	},
 	"files": [
 		"src"
